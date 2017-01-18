@@ -94,7 +94,7 @@ def main(arguments=None):
     if args.show_counts:
         for bc, count in barcode_counts.most_common():
             print('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count))
-        sys.exit()
+        return None
 
     log.warning('most common barcode: {} ({}/{} = {:.2f}%)'.format(
         most_common_bc, counts[0], sum(counts), most_common_pct))
@@ -102,7 +102,7 @@ def main(arguments=None):
 
     if not args.fastq:
         log.error('specify a fastq format file to filter using -f/--fastq')
-        sys.exit()
+        sys.exit(1)
 
     seqs = fastqlite(args.fastq)
     filtered = islice(filter(bc2, seqs, most_common_bc, args.invert), args.head)
