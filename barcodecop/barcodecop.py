@@ -18,9 +18,6 @@ try:
 except:
     __version__ = ''
 
-logging.basicConfig(format='%(message)s')
-log = logging.getLogger(__name__)
-
 
 class VersionAction(argparse._VersionAction):
     """Write the version string to stdout and exit"""
@@ -77,10 +74,18 @@ def main(arguments=None):
         '-c', '--show-counts', action='store_true', default=False,
         help='tabulate barcode counts and exit')
     parser.add_argument(
+        '-q', '--quiet', action='store_true', default=False,
+        help='minimize messages to stderr')
+    parser.add_argument(
         '-V', '--version', action=VersionAction, version=__version__,
         help='Print the version number and exit')
 
     args = parser.parse_args(arguments)
+
+    logging.basicConfig(
+        format='%(message)s',
+        level=logging.ERROR if args.quiet else logging.INFO)
+    log = logging.getLogger(__name__)
 
     bc1, bc2 = tee(fastqlite(args.index), 2)
 
@@ -90,14 +95,14 @@ def main(arguments=None):
 
     most_common_bc = barcodes[0]
     most_common_pct = 100 * float(counts[0])/sum(counts)
+    log.info('most common barcode: {} ({}/{} = {:.2f}%)'.format(
+        most_common_bc, counts[0], sum(counts), most_common_pct))
 
     if args.show_counts:
         for bc, count in barcode_counts.most_common():
             print('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count))
         return None
 
-    log.warning('most common barcode: {} ({}/{} = {:.2f}%)'.format(
-        most_common_bc, counts[0], sum(counts), most_common_pct))
     assert most_common_pct > args.min_pct_assignment
 
     if not args.fastq:
