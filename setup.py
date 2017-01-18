@@ -23,6 +23,9 @@ setup(
     entry_points={'console_scripts': ['barcodecop = barcodecop.barcodecop:main']},
     version=__version__,
     test_suite='tests',
+    install_requires=[
+          'fastalite==0.2',
+      ],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
