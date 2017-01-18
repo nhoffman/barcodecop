@@ -13,8 +13,22 @@ import logging
 
 from fastalite import fastqlite, Opener
 
+try:
+    from . import __version__
+except:
+    __version__ = ''
+
 logging.basicConfig(format='%(message)s')
 log = logging.getLogger(__name__)
+
+
+class VersionAction(argparse._VersionAction):
+    """Write the version string to stdout and exit"""
+    def __call__(self, parser, namespace, values, option_string=None):
+        formatter = parser._get_formatter()
+        formatter.add_text(parser.version if self.version is None else self.version)
+        sys.stdout.write(formatter.format_help())
+        sys.exit(0)
 
 
 def filter(barcodes, seqs, bc_match, invert=False):
@@ -29,7 +43,7 @@ def as_fastq(seq):
     return '@{seq.description}\n{seq.seq}\n+{seq.qual}\n'
 
 
-def main(arguments):
+def main(arguments=None):
     parser = argparse.ArgumentParser(
         prog='barcodecop', description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -51,6 +65,9 @@ def main(arguments):
         '--invert', action='store_true', default=False,
         help='include sequences *not* matching the most common barcode')
     parser.add_argument('--format', choices=['fasta', 'fastq'], default='fastq')
+    parser.add_argument(
+        '-V', '--version', action=VersionAction, version=__version__,
+        help='Print the version number and exit')
 
     args = parser.parse_args(arguments)
 

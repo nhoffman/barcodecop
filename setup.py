@@ -20,6 +20,7 @@ setup(
     packages=find_packages(),
     package_dir={'barcodecop': 'barcodecop'},
     package_data={'barcodecop': ['data/ver']},
+    entry_points={'console_scripts': ['barcodecop = barcodecop.barcodecop:main']},
     version=__version__,
     test_suite='tests',
     classifiers=[
