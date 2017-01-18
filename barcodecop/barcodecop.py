@@ -39,16 +39,24 @@ def filter(barcodes, seqs, bc_match, invert=False):
             yield seq
 
 
+def seqdiff(s1, s2):
+    if s1 == s2:
+        return s1
+    else:
+        return ''.join('.' if c1 == c2 else c2 for c1, c2 in zip(s1, s2))
+
+
 def as_fastq(seq):
-    return '@{seq.description}\n{seq.seq}\n+{seq.qual}\n'
+    return '@{seq.description}\n{seq.seq}\n+{seq.qual}\n'.format(seq=seq)
 
 
 def main(arguments=None):
     parser = argparse.ArgumentParser(
         prog='barcodecop', description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('index_reads', type=Opener())
-    parser.add_argument('inseqs', type=Opener())
+    parser.add_argument('index', type=Opener(), help='index reads in fastq format')
+    parser.add_argument('-f', '--fastq', type=Opener(),
+                        help='reads to filter in fastq format')
     parser.add_argument(
         '-o', '--outfile', default=sys.stdout, type=Opener('w'),
         help='output fastq')
@@ -66,12 +74,15 @@ def main(arguments=None):
         help='include sequences *not* matching the most common barcode')
     parser.add_argument('--format', choices=['fasta', 'fastq'], default='fastq')
     parser.add_argument(
+        '-c', '--show-counts', action='store_true', default=False,
+        help='tabulate barcode counts and exit')
+    parser.add_argument(
         '-V', '--version', action=VersionAction, version=__version__,
         help='Print the version number and exit')
 
     args = parser.parse_args(arguments)
 
-    bc1, bc2 = tee(fastqlite(args.index_reads), 2)
+    bc1, bc2 = tee(fastqlite(args.index), 2)
 
     # determine the most common barcode
     barcode_counts = Counter([str(seq.seq) for seq in islice(bc1, args.snifflimit)])
@@ -79,11 +90,21 @@ def main(arguments=None):
 
     most_common_bc = barcodes[0]
     most_common_pct = 100 * float(counts[0])/sum(counts)
+
+    if args.show_counts:
+        for bc, count in barcode_counts.most_common():
+            print('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count))
+        sys.exit()
+
     log.warning('most common barcode: {} ({}/{} = {:.2f}%)'.format(
         most_common_bc, counts[0], sum(counts), most_common_pct))
     assert most_common_pct > args.min_pct_assignment
 
-    seqs = fastqlite(args.inseqs)
+    if not args.fastq:
+        log.error('specify a fastq format file to filter using -f/--fastq')
+        sys.exit()
+
+    seqs = fastqlite(args.fastq)
     filtered = islice(filter(bc2, seqs, most_common_bc, args.invert), args.head)
 
     for seq in filtered:
