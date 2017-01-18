@@ -47,7 +47,7 @@ def seqdiff(s1, s2):
 
 
 def as_fastq(seq):
-    return '@{seq.description}\n{seq.seq}\n+{seq.qual}\n'.format(seq=seq)
+    return '@{seq.description}\n{seq.seq}\n+\n{seq.qual}\n'.format(seq=seq)
 
 
 def main(arguments=None):
