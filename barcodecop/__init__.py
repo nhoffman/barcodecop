@@ -1,5 +1,4 @@
 from os import path
-from fastalite import fastalite, fastqlite, Opener
 
 try:
     with open(path.join(path.dirname(__file__), 'data', 'ver')) as f:

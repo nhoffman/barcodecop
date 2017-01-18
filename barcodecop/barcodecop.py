@@ -11,9 +11,7 @@ from itertools import islice, tee, izip
 import operator
 import logging
 
-from Bio import SeqIO
-
-from bioy_pkg.utils import Opener
+from fastalite import fastqlite, Opener
 
 logging.basicConfig(format='%(message)s')
 log = logging.getLogger(__name__)
@@ -27,9 +25,13 @@ def filter(barcodes, seqs, bc_match, invert=False):
             yield seq
 
 
+def as_fastq(seq):
+    return '@{seq.description}\n{seq.seq}\n+{seq.qual}\n'
+
+
 def main(arguments):
     parser = argparse.ArgumentParser(
-        description=__doc__,
+        prog='barcodecop', description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('index_reads', type=Opener())
     parser.add_argument('inseqs', type=Opener())
@@ -52,7 +54,7 @@ def main(arguments):
 
     args = parser.parse_args(arguments)
 
-    bc1, bc2 = tee(SeqIO.parse(args.index_reads, 'fastq'), 2)
+    bc1, bc2 = tee(fastqlite(args.index_reads), 2)
 
     # determine the most common barcode
     barcode_counts = Counter([str(seq.seq) for seq in islice(bc1, args.snifflimit)])
@@ -64,9 +66,11 @@ def main(arguments):
         most_common_bc, counts[0], sum(counts), most_common_pct))
     assert most_common_pct > args.min_pct_assignment
 
-    seqs = SeqIO.parse(args.inseqs, 'fastq')
+    seqs = fastqlite(args.inseqs)
     filtered = islice(filter(bc2, seqs, most_common_bc, args.invert), args.head)
-    SeqIO.write(filtered, args.outfile, args.format)
+
+    for seq in filtered:
+        args.outfile.write(as_fastq(seq))
 
 
 if __name__ == '__main__':

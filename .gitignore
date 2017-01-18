@@ -1,0 +1,7 @@
+*.pyc
+*-env
+.cache
+.eggs
+*.egg-info
+test_output/
+dist/
