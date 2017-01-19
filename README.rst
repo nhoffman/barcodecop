@@ -22,31 +22,34 @@ accompanying fastq file.
 
 Command line arguments::
 
-  usage: barcodecop [-h] [-f FASTQ] [-o OUTFILE] [--snifflimit N] [--head N]
-		    [--min-pct-assignment MIN_PCT_ASSIGNMENT] [--invert]
-		    [--format {fasta,fastq}] [-c] [-q] [-V]
-		    index
+  usage: barcodecop [-h] [-f file.fastq[.bz2|.gz]] [-o OUTFILE] [--snifflimit N]
+		    [--head N] [--min-pct-assignment PERCENT] [--invert] [-c]
+		    [-q] [-V]
+		    file.fastq[.bz2|.gz] [file.fastq[.bz2|.gz] ...]
 
   Filter fastq files, limiting to exact barcode matches.
 
+  Input and output files may be compressed as indicated by a .bz2 or .gz
+  suffix.
+
   positional arguments:
-    index                 index reads in fastq format
+    file.fastq[.bz2|.gz]  one or two files containing index reads in fastq
+			  format
 
   optional arguments:
     -h, --help            show this help message and exit
-    -f FASTQ, --fastq FASTQ
+    -f file.fastq[.bz2|.gz], --fastq file.fastq[.bz2|.gz]
 			  reads to filter in fastq format
     -o OUTFILE, --outfile OUTFILE
 			  output fastq
     --snifflimit N        read no more than N records from the index file
 			  [10000]
-    --head N              limit the output file to N records [None]
-    --min-pct-assignment MIN_PCT_ASSIGNMENT
-			  min percentage of total barcodes represented by the
-			  most common
-    --invert              include sequences *not* matching the most common
+    --head N              limit the output file to N records
+    --min-pct-assignment PERCENT
+			  raise error unless the most common barcode represents
+			  at least PERCENT of the total [90.0]
+    --invert              include only sequences *not* matching the most common
 			  barcode
-    --format {fasta,fastq}
     -c, --show-counts     tabulate barcode counts and exit
     -q, --quiet           minimize messages to stderr
     -V, --version         Print the version number and exit

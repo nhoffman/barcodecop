@@ -15,6 +15,9 @@ testfiles = 'testfiles'
 barcodes = path.join(testfiles, 'barcodes.fastq.gz')
 outdir = 'test_output'
 most_common = 'TATTACTCTA'
+dual1 = path.join(testfiles, 'dual_I1.fastq.gz')
+dual2 = path.join(testfiles, 'dual_I2.fastq.gz')
+most_common_dual = 'ACTGGTAGGA+TTCTCTCCAG'
 
 
 class Capturing(list):
@@ -52,7 +55,7 @@ def grouper(iterable, n, fillvalue=None):
     return izip_longest(fillvalue=fillvalue, *args)
 
 
-class TestBarcodes(TestCase):
+class TestSingleIndex(TestCase):
 
     def test_01(self):
         with Capturing() as output:
@@ -81,3 +84,20 @@ class TestBarcodes(TestCase):
             main([barcodes, '-f', barcodes, '--invert'])
         desc, seqs, __, quals = zip(*grouper(output, 4))
         self.assertNotIn(most_common, set(seqs))
+
+
+class TestDualIndex(TestCase):
+    def test_01(self):
+        with Capturing() as output:
+            # because main() is called in the same global context in
+            # each test, '-q' silences logging for all invocations.
+            main([dual1, dual2, '-c'])
+        self.assertEqual(output[0].split('\t')[0], most_common_dual)
+
+    def test_02(self):
+        # filter barcode file using itself; get back only the most common barcode
+        with Capturing() as output:
+            main([dual1, dual2, '-f', dual1])
+        desc, seqs, __, quals = zip(*grouper(output, 4))
+        self.assertSetEqual(set(seqs), {most_common_dual.split('+')[0]})
+

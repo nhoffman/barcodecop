@@ -2,6 +2,9 @@
 
 """Filter fastq files, limiting to exact barcode matches.
 
+Input and output files may be compressed as indicated by a .bz2 or .gz
+suffix.
+
 """
 
 import argparse
@@ -10,6 +13,7 @@ from collections import Counter
 from itertools import islice, tee, izip
 import operator
 import logging
+from collections import namedtuple
 
 from fastalite import fastqlite, Opener
 
@@ -40,20 +44,31 @@ def seqdiff(s1, s2):
     if s1 == s2:
         return s1
     else:
-        return ''.join('.' if c1 == c2 else c2 for c1, c2 in zip(s1, s2))
+        return ''.join('.' if c1 == c2 and c1.isalpha() else c2
+                       for c1, c2 in zip(s1, s2))
 
 
 def as_fastq(seq):
     return '@{seq.description}\n{seq.seq}\n+\n{seq.qual}\n'.format(seq=seq)
 
 
+def combine_dual_indices(file1, file2):
+    Seq = namedtuple('Seq', ['id', 'seq'])
+    for i1, i2 in izip(fastqlite(file1), fastqlite(file2)):
+        assert i1.id == i2.id
+        yield Seq(id=i1.id, seq=i1.seq + '+' + i2.seq)
+
+
 def main(arguments=None):
     parser = argparse.ArgumentParser(
         prog='barcodecop', description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('index', type=Opener(), help='index reads in fastq format')
-    parser.add_argument('-f', '--fastq', type=Opener(),
-                        help='reads to filter in fastq format')
+    parser.add_argument(
+        'index', nargs='+', type=Opener(), metavar='file.fastq[.bz2|.gz]',
+        help='one or two files containing index reads in fastq format')
+    parser.add_argument(
+        '-f', '--fastq', type=Opener(), metavar='file.fastq[.bz2|.gz]',
+        help='reads to filter in fastq format')
     parser.add_argument(
         '-o', '--outfile', default=sys.stdout, type=Opener('w'),
         help='output fastq')
@@ -62,14 +77,15 @@ def main(arguments=None):
         help='read no more than N records from the index file [%(default)s]')
     parser.add_argument(
         '--head', type=int, metavar='N',
-        help='limit the output file to N records [%(default)s]')
+        help='limit the output file to N records')
     parser.add_argument(
-        '--min-pct-assignment', type=float, default=90.0,
-        help='min percentage of total barcodes represented by the most common')
+        '--min-pct-assignment', type=float, default=90.0, metavar='PERCENT',
+        help=("""raise error unless the most common barcode represents
+               at least PERCENT of the total [%(default)s]"""))
     parser.add_argument(
         '--invert', action='store_true', default=False,
-        help='include sequences *not* matching the most common barcode')
-    parser.add_argument('--format', choices=['fasta', 'fastq'], default='fastq')
+        help='include only sequences *not* matching the most common barcode')
+    # parser.add_argument('--format', choices=['fasta', 'fastq'], default='fastq')
     parser.add_argument(
         '-c', '--show-counts', action='store_true', default=False,
         help='tabulate barcode counts and exit')
@@ -87,7 +103,14 @@ def main(arguments=None):
         level=logging.ERROR if args.quiet else logging.INFO)
     log = logging.getLogger(__name__)
 
-    bc1, bc2 = tee(fastqlite(args.index), 2)
+    if len(args.index) == 1:
+        bcseqs = fastqlite(args.index[0])
+    elif len(args.index) == 2:
+        bcseqs = combine_dual_indices(*args.index)
+    else:
+        log.error('error: please specify either one or two index files')
+
+    bc1, bc2 = tee(bcseqs, 2)
 
     # determine the most common barcode
     barcode_counts = Counter([str(seq.seq) for seq in islice(bc1, args.snifflimit)])
