@@ -7,18 +7,19 @@ Enforce exact barcode matches in demultiplexed MiSeq reads
 .. image:: https://travis-ci.org/nhoffman/barcodecop.svg?branch=master
     :target: https://travis-ci.org/nhoffman/barcodecop
 
-The problem is rather silly, really: the onboard software used for
-demultiplexing on the Illumina MiSeq cannot be configured to enforce
-exact barcode matches. As a result, a minority of reads (up to about
-5% in my tests) are assigned to a specimen on the basis of a partial
-barcode match. It turns out that some fraction of these
-less-than-exact matches are mis-assigned from other specimens (as of
-course are some smaller fraction of the the exact matches, but we
-can't identify these as easily). This mis-assignment is a problem for
-ultra sensitive assays that look for very low prevalence reads. This
-package provides a tiny script that uses the index reads to determine
-the most prevalent barcode sequence and filter reads from an
-accompanying fastq file.
+The onboard software used for demultiplexing on the Illumina MiSeq
+cannot be configured to enforce exact barcode matches. As a result, a
+minority of reads (up to about 5% in my tests) are assigned to a
+specimen on the basis of a partial barcode match. It turns out that
+some fraction of these less-than-exact matches are mis-assigned from
+other specimens (as of course are some smaller fraction of the exact
+matches, but we can't identify these as easily). This mis-assignment
+is a problem for ultra sensitive assays that attempt to draw
+conclusions from the presence of very low prevalence reads.
+
+This package provides the ``barcodecop`` command that uses the index
+reads to determine the most prevalent barcode sequence and filter
+reads from an accompanying fastq file.
 
 Command line arguments::
 
@@ -53,6 +54,15 @@ Command line arguments::
     -c, --show-counts     tabulate barcode counts and exit
     -q, --quiet           minimize messages to stderr
     -V, --version         Print the version number and exit
+
+
+Both single and dual-indexing are supported. For example::
+
+  barcodecop input_I1.fastq --fastq input_R1.fastq -o output_R1.fastq
+
+Or, using a dual index::
+
+  barcodecop input_I1.fastq input_I2.fastq --fastq input_R1.fastq -o output_R1.fastq
 
 
 Installation
