@@ -80,8 +80,12 @@ def main(arguments=None):
         help='limit the output file to N records')
     parser.add_argument(
         '--min-pct-assignment', type=float, default=90.0, metavar='PERCENT',
-        help=("""raise error unless the most common barcode represents
-               at least PERCENT of the total [%(default)s]"""))
+        help=("""warn (or fail with an error; see --strict) if the
+               most common barcode represents less than PERCENT of the
+               total [%(default)s]"""))
+    parser.add_argument(
+        '--strict', action='store_true', default=False,
+        help=("""fail if conditions of --min-pct-assignment are not met"""))
     parser.add_argument(
         '--invert', action='store_true', default=False,
         help='include only sequences *not* matching the most common barcode')
@@ -126,7 +130,14 @@ def main(arguments=None):
             print('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count))
         return None
 
-    assert most_common_pct > args.min_pct_assignment
+    if most_common_pct < args.min_pct_assignment:
+        msg = 'frequency of most common barcode is less than {}%'.format(
+            args.min_pct_assignment)
+        if args.strict:
+            log.error('Error: ' + msg)
+            sys.exit(1)
+        else:
+            log.warning('Warning: ' + msg)
 
     if not args.fastq:
         log.error('specify a fastq format file to filter using -f/--fastq')

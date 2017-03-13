@@ -85,6 +85,19 @@ class TestSingleIndex(TestCase):
         desc, seqs, __, quals = zip(*grouper(output, 4))
         self.assertNotIn(most_common, set(seqs))
 
+    def test_05(self):
+        # test warning when recovery is below --min-pct-assignment
+        with Capturing() as output:
+            main([barcodes, '-f', barcodes, '--min-pct-assignment', '100'])
+
+    def test_06(self):
+        # test error with --strict
+        with Capturing() as output:
+            self.assertRaises(
+                SystemExit,
+                main,
+                [barcodes, '-f', barcodes, '--min-pct-assignment', '100', '--strict'])
+
 
 class TestDualIndex(TestCase):
     def test_01(self):
@@ -100,4 +113,3 @@ class TestDualIndex(TestCase):
             main([dual1, dual2, '-f', dual1])
         desc, seqs, __, quals = zip(*grouper(output, 4))
         self.assertSetEqual(set(seqs), {most_common_dual.split('+')[0]})
-
