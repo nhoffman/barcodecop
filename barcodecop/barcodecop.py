@@ -39,6 +39,14 @@ def filter(barcodes, seqs, bc_match, invert=False):
         if compare(str(bc.seq), bc_match):
             yield seq
 
+def filter2(barcodes, seqs, bc_match, min_qual, invert=False):
+    compare = operator.ne if invert else operator.eq
+    for bc, seq in izip(barcodes, seqs):
+        assert bc.id == seq.id
+        mean_qual = get_mean_qual(bc)
+        if compare(str(bc.seq), bc_match) and mean_qual > min_qual:
+            yield seq
+
 
 def seqdiff(s1, s2):
     if s1 == s2:
@@ -46,6 +54,11 @@ def seqdiff(s1, s2):
     else:
         return ''.join('.' if c1 == c2 and c1.isalpha() else c2
                        for c1, c2 in zip(s1, s2))
+
+def get_mean_qual(bc, offset=33):
+    # note the default offset of 33 is applicable for illumina reads (Phred+33)
+    qual_list = [ord(q)-offset for q in bc.qual]
+    return sum(qual_list)/len(qual_list)
 
 
 def as_fastq(seq):
@@ -89,10 +102,19 @@ def main(arguments=None):
     parser.add_argument(
         '--invert', action='store_true', default=False,
         help='include only sequences *not* matching the most common barcode')
+
+    parser.add_argument(
+        '--qual-filter', action='store_true', default=False,
+        help='filter reads based on minimum index quality')
+    parser.add_argument(
+        '-p', '--min-qual', type=int, default=26,
+        help='minimum mean quality of index in order to be kept')
+
     # parser.add_argument('--format', choices=['fasta', 'fastq'], default='fastq')
     parser.add_argument(
         '-c', '--show-counts', action='store_true', default=False,
         help='tabulate barcode counts and exit')
+
     parser.add_argument(
         '-q', '--quiet', action='store_true', default=False,
         help='minimize messages to stderr')
@@ -144,7 +166,10 @@ def main(arguments=None):
         sys.exit(1)
 
     seqs = fastqlite(args.fastq)
-    filtered = islice(filter(bc2, seqs, most_common_bc, args.invert), args.head)
+    if args.qual_filter:
+        filtered = islice(filter2(bc2, seqs, most_common_bc, args.min_qual, args.invert), args.head)
+    else:
+        filtered = islice(filter(bc2, seqs, most_common_bc, args.invert), args.head)
 
     for seq in filtered:
         args.outfile.write(as_fastq(seq))
