@@ -24,10 +24,13 @@ except:
 
 
 class VersionAction(argparse._VersionAction):
+
     """Write the version string to stdout and exit"""
+
     def __call__(self, parser, namespace, values, option_string=None):
         formatter = parser._get_formatter()
-        formatter.add_text(parser.version if self.version is None else self.version)
+        formatter.add_text(
+            parser.version if self.version is None else self.version)
         sys.stdout.write(formatter.format_help())
         sys.exit(0)
 
@@ -39,12 +42,19 @@ def filter(barcodes, seqs, bc_match, invert=False):
         if compare(str(bc.seq), bc_match):
             yield seq
 
+
 def filter2(barcodes, seqs, bc_match, min_qual, invert=False):
     compare = operator.ne if invert else operator.eq
     for bc, seq in izip(barcodes, seqs):
         assert bc.id == seq.id
-        mean_qual = get_mean_qual(bc)
-        if compare(str(bc.seq), bc_match) and mean_qual > min_qual:
+        mean_qual = get_mean_qual(bc.qual)
+        if getattr(bc, 'qual2'):
+            mean_qual2 = get_mean_qual(bc.qual2)
+        else:
+            mean_qual2 = sys.maxint
+        if (compare(str(bc.seq), bc_match) and
+                mean_qual > min_qual and
+                mean_qual2 > min_qual):
             yield seq
 
 
@@ -55,10 +65,11 @@ def seqdiff(s1, s2):
         return ''.join('.' if c1 == c2 and c1.isalpha() else c2
                        for c1, c2 in zip(s1, s2))
 
-def get_mean_qual(bc, offset=33):
+
+def get_mean_qual(qual_str, offset=33):
     # note the default offset of 33 is applicable for illumina reads (Phred+33)
-    qual_list = [ord(q)-offset for q in bc.qual]
-    return sum(qual_list)/len(qual_list)
+    qual_list = [ord(q) - offset for q in qual_str]
+    return sum(qual_list) / len(qual_list)
 
 
 def as_fastq(seq):
@@ -66,10 +77,10 @@ def as_fastq(seq):
 
 
 def combine_dual_indices(file1, file2):
-    Seq = namedtuple('Seq', ['id', 'seq'])
+    Seq = namedtuple('Seq', ['id', 'seq', 'qual', 'qual2'])
     for i1, i2 in izip(fastqlite(file1), fastqlite(file2)):
         assert i1.id == i2.id
-        yield Seq(id=i1.id, seq=i1.seq + '+' + i2.seq)
+        yield Seq(id=i1.id, seq=i1.seq + '+' + i2.seq, qual=i1.qual, qual2=i2.qual)
 
 
 def main(arguments=None):
@@ -139,11 +150,12 @@ def main(arguments=None):
     bc1, bc2 = tee(bcseqs, 2)
 
     # determine the most common barcode
-    barcode_counts = Counter([str(seq.seq) for seq in islice(bc1, args.snifflimit)])
+    barcode_counts = Counter([str(seq.seq)
+                              for seq in islice(bc1, args.snifflimit)])
     barcodes, counts = zip(*barcode_counts.most_common())
 
     most_common_bc = barcodes[0]
-    most_common_pct = 100 * float(counts[0])/sum(counts)
+    most_common_pct = 100 * float(counts[0]) / sum(counts)
     log.info('most common barcode: {} ({}/{} = {:.2f}%)'.format(
         most_common_bc, counts[0], sum(counts), most_common_pct))
 
@@ -167,9 +179,11 @@ def main(arguments=None):
 
     seqs = fastqlite(args.fastq)
     if args.qual_filter:
-        filtered = islice(filter2(bc2, seqs, most_common_bc, args.min_qual, args.invert), args.head)
+        filtered = islice(
+            filter2(bc2, seqs, most_common_bc, args.min_qual, args.invert), args.head)
     else:
-        filtered = islice(filter(bc2, seqs, most_common_bc, args.invert), args.head)
+        filtered = islice(
+            filter(bc2, seqs, most_common_bc, args.invert), args.head)
 
     for seq in filtered:
         args.outfile.write(as_fastq(seq))
