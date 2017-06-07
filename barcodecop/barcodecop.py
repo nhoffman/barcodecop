@@ -14,9 +14,9 @@ from itertools import islice, tee, izip
 import operator
 import logging
 from collections import namedtuple
-
 from fastalite import fastqlite, Opener
 
+from . import MIN_QUAL, QUAL_OFFSET
 try:
     from . import __version__
 except:
@@ -43,11 +43,11 @@ def filter(barcodes, seqs, bc_match, invert=False):
             yield seq
 
 
-def filter2(barcodes, seqs, bc_match, min_qual, invert=False):
+def filter2(barcodes, seqs, bc_match, min_qual, qual_offset, invert=False):
     compare = operator.ne if invert else operator.eq
     for bc, seq in izip(barcodes, seqs):
         assert bc.id == seq.id
-        mean_qual = get_mean_qual(bc.qual)
+        mean_qual = get_mean_qual(bc.qual, offset=qual_offset)
         if getattr(bc, 'qual2'):
             mean_qual2 = get_mean_qual(bc.qual2)
         else:
@@ -66,8 +66,7 @@ def seqdiff(s1, s2):
                        for c1, c2 in zip(s1, s2))
 
 
-def get_mean_qual(qual_str, offset=33):
-    # note the default offset of 33 is applicable for illumina reads (Phred+33)
+def get_mean_qual(qual_str, offset):
     qual_list = [ord(q) - offset for q in qual_str]
     return sum(qual_list) / len(qual_list)
 
@@ -118,8 +117,12 @@ def main(arguments=None):
         '--qual-filter', action='store_true', default=False,
         help='filter reads based on minimum index quality')
     parser.add_argument(
-        '-p', '--min-qual', type=int, default=26,
-        help='minimum mean quality of index in order to be kept')
+        '-p', '--min-qual', type=int, default=MIN_QUAL,
+        help='minimum mean quality of index in order to be kept [{}]'.format(MIN_QUAL))
+    # note the default offset of 33 is applicable for illumina reads (Phred+33)
+    parser.add_argument(
+        '--qual-offset', type=int, default=QUAL_OFFSET,
+        help='offset value for the quality score of each position [{}]'.format(QUAL_OFFSET))
 
     # parser.add_argument('--format', choices=['fasta', 'fastq'], default='fastq')
     parser.add_argument(
@@ -180,7 +183,7 @@ def main(arguments=None):
     seqs = fastqlite(args.fastq)
     if args.qual_filter:
         filtered = islice(
-            filter2(bc2, seqs, most_common_bc, args.min_qual, args.invert), args.head)
+            filter2(bc2, seqs, most_common_bc, args.min_qual, args.qual_offset, args.invert), args.head)
     else:
         filtered = islice(
             filter(bc2, seqs, most_common_bc, args.invert), args.head)
