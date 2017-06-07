@@ -51,6 +51,12 @@ Command line arguments::
 			  at least PERCENT of the total [90.0]
     --invert              include only sequences *not* matching the most common
 			  barcode
+    --qual-filter         filter reads based on minimum index quality
+    -p MIN_QUAL, --min-qual MIN_QUAL
+                          minimum mean quality of index in order to be kept [26]
+    --qual-offset QUAL_OFFSET
+                          offset value for the quality score of each position
+                          [33]
     -c, --show-counts     tabulate barcode counts and exit
     -q, --quiet           minimize messages to stderr
     -V, --version         Print the version number and exit
