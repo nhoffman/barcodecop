@@ -47,10 +47,10 @@ def filter2(barcodes, seqs, bc_match, min_qual, qual_offset, invert=False):
     compare = operator.ne if invert else operator.eq
     for bc, seq in izip(barcodes, seqs):
         assert bc.id == seq.id
-        mean_qual = get_mean_qual(bc.qual, offset=qual_offset)
-        if getattr(bc, 'qual2'):
-            mean_qual2 = get_mean_qual(bc.qual2)
-        else:
+        mean_qual = get_mean_qual(bc.qual, qual_offset)
+        try:
+            mean_qual2 = get_mean_qual(bc.qual2, qual_offset)
+        except:
             mean_qual2 = sys.maxint
         if (compare(str(bc.seq), bc_match) and
                 mean_qual > min_qual and
