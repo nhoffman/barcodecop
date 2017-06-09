@@ -51,36 +51,49 @@ def get_match_filter(barcode):
     return filterfun
 
 
-def get_qual_filter(min_qual, qual_offset):
+def get_qual_filter(min_qual, qual_offset, paired=False):
     """Return a function for filtering a pair of (seq, bc) namedtuple
     pairs. The function returns True if the average barcode quality
-    score calculated using qual_offset is at least min_qual
+    score calculated using qual_offset is at least min_qual. If
+    ``paired`` is True, ``bc`` must be a namedtuple with attributes qual
+    and qual1; the function returns True if the average barcode
+    quality score calculated using qual_offset is at least min_qual
 
     """
 
-    def filterfun(pair):
-        seq, bc = pair
-        assert bc.id == seq.id
-        return get_mean_qual(bc.qual, qual_offset) >= min_qual
+    scoredict = get_quality_scores(qual_offset)
+
+    if paired:
+        def filterfun(pair):
+            seq, bc = pair
+            assert bc.id == seq.id
+            return (check_score(scoredict, min_qual, bc.qual) and
+                    check_score(scoredict, min_qual, bc.qual2))
+    else:
+        def filterfun(pair):
+            seq, bc = pair
+            assert bc.id == seq.id
+            return check_score(scoredict, min_qual, bc.qual)
 
     return filterfun
 
 
-def get_qual_filter_paired(min_qual, qual_offset):
-    """Return a function for filtering a pair of (seq, bc) namedtuple
-    pairs. ``bc`` is a namedtuple with attributes qual and qual1; the
-    function returns True if the average barcode quality score
-    calculated using qual_offset is at least min_qual
+def get_quality_scores(offset=ILLUMINA_QUAL_OFFSET):
+    """Produce a dict of {ascii character: quality score} given integer
+    ``offset``; see https://en.wikipedia.org/wiki/FASTQ_format
 
+    TODO: make sure this actually works for encodings other than the default
     """
 
-    def filterfun(pair):
-        seq, bc = pair
-        assert bc.id == seq.id
-        return (get_mean_qual(bc.qual, qual_offset) >= min_qual and
-                get_mean_qual(bc.qual2, qual_offset) >= min_qual)
+    return {chr(i): i - offset for i in range(offset, 127)}
 
-    return filterfun
+
+def check_score(scoredict, min_qual, qual_str):
+    """Return True if the average quality score is at least min_qual
+
+    """
+    qscores = [scoredict[q] for q in qual_str]
+    return sum(qscores) >= min_qual * len(qscores)
 
 
 def seqdiff(s1, s2):
@@ -89,11 +102,6 @@ def seqdiff(s1, s2):
     else:
         return ''.join('.' if c1 == c2 and c1.isalpha() else c2
                        for c1, c2 in zip(s1, s2))
-
-
-def get_mean_qual(qual_str, offset):
-    qual_list = [ord(q) - offset for q in qual_str]
-    return sum(qual_list) / len(qual_list)
 
 
 def as_fastq(seq):
@@ -178,7 +186,7 @@ def main(arguments=None):
         bcseqs = fastqlite(args.index[0])
         qual_filter = get_qual_filter(args.min_qual, args.qual_offset)
     elif len(args.index) == 2:
-        qual_filter = get_qual_filter_paired(args.min_qual, args.qual_offset)
+        qual_filter = get_qual_filter(args.min_qual, args.qual_offset, paired=True)
         bcseqs = combine_dual_indices(*args.index)
     else:
         log.error('error: please specify either one or two index files')
