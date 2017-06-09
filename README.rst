@@ -15,11 +15,15 @@ some fraction of these less-than-exact matches are mis-assigned from
 other specimens (as of course are some smaller fraction of the exact
 matches, but we can't identify these as easily). This mis-assignment
 is a problem for ultra sensitive assays that attempt to draw
-conclusions from the presence of very low prevalence reads.
+conclusions from the presence of very low prevalence reads.  Another 
+issue is low quality barcodes - if the quality score of barcodes is 
+sufficiently low enough it indicates that they may be misassigned to 
+reads.
 
 This package provides the ``barcodecop`` command that uses the index
 reads to determine the most prevalent barcode sequence and filter
-reads from an accompanying fastq file.
+reads from an accompanying fastq file and optionally filters reads 
+with low quality barcodes.
 
 Command line arguments::
 
