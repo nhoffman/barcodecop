@@ -10,8 +10,7 @@ suffix.
 import argparse
 import sys
 from collections import Counter
-from itertools import islice, tee, izip
-import operator
+from itertools import islice, tee, izip, ifilter, ifilterfalse
 import logging
 from collections import namedtuple
 from fastalite import fastqlite, Opener
@@ -28,7 +27,7 @@ ILLUMINA_QUAL_OFFSET = 33
 
 class VersionAction(argparse._VersionAction):
 
-    """Write the version string to stdout and exit"""
+    """Write the version string to stdout (rather than stderr) and exit"""
 
     def __call__(self, parser, namespace, values, option_string=None):
         formatter = parser._get_formatter()
@@ -38,27 +37,50 @@ class VersionAction(argparse._VersionAction):
         sys.exit(0)
 
 
-def filter(barcodes, seqs, bc_match, invert=False):
-    compare = operator.ne if invert else operator.eq
-    for bc, seq in izip(barcodes, seqs):
+def get_match_filter(barcode):
+    """Return a function for filtering a pair of (seq, bc) namedtuple
+    pairs; the function returns True if bc.seq == barcode
+
+    """
+
+    def filterfun(pair):
+        seq, bc = pair
         assert bc.id == seq.id
-        if compare(str(bc.seq), bc_match):
-            yield seq
+        return str(bc.seq) == barcode
+
+    return filterfun
 
 
-def filter2(barcodes, seqs, bc_match, min_qual, qual_offset, invert=False):
-    compare = operator.ne if invert else operator.eq
-    for bc, seq in izip(barcodes, seqs):
+def get_qual_filter(min_qual, qual_offset):
+    """Return a function for filtering a pair of (seq, bc) namedtuple
+    pairs. The function returns True if the average barcode quality
+    score calculated using qual_offset is at least min_qual
+
+    """
+
+    def filterfun(pair):
+        seq, bc = pair
         assert bc.id == seq.id
-        mean_qual = get_mean_qual(bc.qual, qual_offset)
-        try:
-            mean_qual2 = get_mean_qual(bc.qual2, qual_offset)
-        except:
-            mean_qual2 = sys.maxint
-        if (compare(str(bc.seq), bc_match) and
-                mean_qual > min_qual and
-                mean_qual2 > min_qual):
-            yield seq
+        return get_mean_qual(bc.qual, qual_offset) >= min_qual
+
+    return filterfun
+
+
+def get_qual_filter_paired(min_qual, qual_offset):
+    """Return a function for filtering a pair of (seq, bc) namedtuple
+    pairs. ``bc`` is a namedtuple with attributes qual and qual1; the
+    function returns True if the average barcode quality score
+    calculated using qual_offset is at least min_qual
+
+    """
+
+    def filterfun(pair):
+        seq, bc = pair
+        assert bc.id == seq.id
+        return (get_mean_qual(bc.qual, qual_offset) >= min_qual and
+                get_mean_qual(bc.qual2, qual_offset) >= min_qual)
+
+    return filterfun
 
 
 def seqdiff(s1, s2):
@@ -145,9 +167,12 @@ def main(arguments=None):
         level=logging.ERROR if args.quiet else logging.INFO)
     log = logging.getLogger(__name__)
 
+    # prepare to filter on the basis of single or dual barcodes
     if len(args.index) == 1:
         bcseqs = fastqlite(args.index[0])
+        qual_filter = get_qual_filter(args.min_qual, args.qual_offset)
     elif len(args.index) == 2:
+        qual_filter = get_qual_filter_paired(args.min_qual, args.qual_offset)
         bcseqs = combine_dual_indices(*args.index)
     else:
         log.error('error: please specify either one or two index files')
@@ -178,19 +203,22 @@ def main(arguments=None):
         else:
             log.warning('Warning: ' + msg)
 
+    match_filter = get_match_filter(most_common_bc)
+
     if not args.fastq:
         log.error('specify a fastq format file to filter using -f/--fastq')
         sys.exit(1)
 
     seqs = fastqlite(args.fastq)
-    if args.qual_filter:
-        filtered = islice(
-            filter2(bc2, seqs, most_common_bc, args.min_qual, args.qual_offset, args.invert), args.head)
-    else:
-        filtered = islice(
-            filter(bc2, seqs, most_common_bc, args.invert), args.head)
 
-    for seq in filtered:
+    ifilterfun = ifilterfalse if args.invert else ifilter
+
+    filtered = ifilterfun(match_filter, izip(seqs, bc2))
+
+    if args.qual_filter:
+        filtered = ifilterfun(qual_filter, filtered)
+
+    for seq, bc in islice(filtered, args.head):
         args.outfile.write(as_fastq(seq))
 
 
