@@ -52,10 +52,13 @@ def get_match_filter(barcode):
 def get_qual_filter(min_qual, encoding, paired=False):
     """Return a function for filtering a pair of (seq, bc) namedtuple
     pairs. The function returns True if the average barcode quality
-    score calculated using qual_offset is at least min_qual. If
-    ``paired`` is True, ``bc`` must be a namedtuple with attributes qual
-    and qual1; the function returns True if the average barcode
-    quality score calculated using qual_offset is at least min_qual
+    score calculated using the provided encoding method is at least 
+    min_qual. If``paired`` is True, ``bc`` must be a namedtuple with 
+    attributes qual and qual2; the function returns True if the average 
+    barcode quality score calculated using the provided encoding method 
+    is at least min_qual.  The function defined for each encoding method 
+    is specified as ``get_{}_encoding``.  Currently only Sanger phred
+    encoding is supported -- see ``get_phred_encoding``.
 
     """
 
