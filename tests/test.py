@@ -119,20 +119,23 @@ class TestSingleIndex(TestCase):
         desc, seqs, __, quals = zip(*grouper(output, 4))
         self.assertEqual(len(seqs), 5)
 
-    def test_qual_03(self):
-        # test quality filtering with modified offset
-        with Capturing() as output:
-            main(
-                [barcodes_qual,
-                 '-f',
-                 barcodes_qual,
-                 '--qual-filter',
-                 '-p',
-                 '1',
-                 '--qual-offset',
-                 '34'])
-        desc, seqs, __, quals = zip(*grouper(output, 4))
-        self.assertEqual(len(seqs), 5)
+    # TODO: test non-default offset, but will need sequences with the
+    # appropriate encoding
+
+    # def test_qual_03(self):
+    #     # test quality filtering with modified offset
+    #     with Capturing() as output:
+    #         main(
+    #             [barcodes_qual,
+    #              '-f',
+    #              barcodes_qual,
+    #              '--qual-filter',
+    #              '-p',
+    #              '1',
+    #              '--qual-offset',
+    #              '34'])
+    #     desc, seqs, __, quals = zip(*grouper(output, 4))
+    #     self.assertEqual(len(seqs), 5)
 
 
 class TestDualIndex(TestCase):
