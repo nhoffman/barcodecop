@@ -218,8 +218,6 @@ def main(arguments=None):
         else:
             log.warning('Warning: ' + msg)
 
-    match_filter = get_match_filter(most_common_bc)
-
     if not args.fastq:
         log.error('specify a fastq format file to filter using -f/--fastq')
         sys.exit(1)
@@ -227,7 +225,7 @@ def main(arguments=None):
     seqs = fastqlite(args.fastq)
 
     ifilterfun = ifilterfalse if args.invert else ifilter
-    filtered = ifilterfun(match_filter, izip(seqs, bc2))
+    filtered = ifilterfun(get_match_filter(most_common_bc), izip(seqs, bc2))
 
     if args.qual_filter:
         filtered = ifilterfun(qual_filter, filtered)
