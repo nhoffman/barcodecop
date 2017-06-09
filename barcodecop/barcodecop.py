@@ -127,38 +127,42 @@ def main(arguments=None):
         '--head', type=int, metavar='N',
         help='limit the output file to N records')
     parser.add_argument(
-        '--min-pct-assignment', type=float, default=90.0, metavar='PERCENT',
-        help=("""warn (or fail with an error; see --strict) if the
-               most common barcode represents less than PERCENT of the
-               total [%(default)s]"""))
-    parser.add_argument(
-        '--strict', action='store_true', default=False,
-        help=("""fail if conditions of --min-pct-assignment are not met"""))
-    parser.add_argument(
         '--invert', action='store_true', default=False,
-        help='include only sequences *not* matching the most common barcode')
-
-    parser.add_argument(
-        '--qual-filter', action='store_true', default=False,
-        help='filter reads based on minimum index quality')
-    parser.add_argument(
-        '-p', '--min-qual', type=int, default=MIN_QUAL,
-        help='minimum mean quality of index in order to be kept [%(default)s]')
-    parser.add_argument(
-        '--qual-offset', type=int, default=ILLUMINA_QUAL_OFFSET,
-        help='offset value for calculating quality score [%(default)s]')
-
-    # parser.add_argument('--format', choices=['fasta', 'fastq'], default='fastq')
-    parser.add_argument(
-        '-c', '--show-counts', action='store_true', default=False,
-        help='tabulate barcode counts and exit')
-
+        help='include only sequences failing filtering criteria')
     parser.add_argument(
         '-q', '--quiet', action='store_true', default=False,
         help='minimize messages to stderr')
     parser.add_argument(
         '-V', '--version', action=VersionAction, version=__version__,
         help='Print the version number and exit')
+
+    match_options = parser.add_argument_group('Barcode matching options')
+
+    match_options.add_argument(
+        '--min-pct-assignment', type=float, default=90.0, metavar='PERCENT',
+        help=("""warn (or fail with an error; see --strict) if the
+               most common barcode represents less than PERCENT of the
+               total [%(default)s]"""))
+    match_options.add_argument(
+        '--strict', action='store_true', default=False,
+        help=("""fail if conditions of --min-pct-assignment are not met"""))
+    match_options.add_argument(
+        '-c', '--show-counts', action='store_true', default=False,
+        help='tabulate barcode counts and exit')
+
+    qual_options = parser.add_argument_group('Barcode quality filtering options')
+
+    qual_options.add_argument(
+        '--qual-filter', action='store_true', default=False,
+        help='filter reads based on minimum index quality [default: no quality filter]')
+    qual_options.add_argument(
+        '-p', '--min-qual', type=int, default=MIN_QUAL,
+        help="""reject seqs with mean barcode quality score less than
+        this value; for dual index, both barcodes must meet the
+        threshold [%(default)s]""")
+    qual_options.add_argument(
+        '--qual-offset', type=int, default=ILLUMINA_QUAL_OFFSET,
+        help='offset value for calculating quality score [%(default)s]')
 
     args = parser.parse_args(arguments)
 
@@ -167,7 +171,9 @@ def main(arguments=None):
         level=logging.ERROR if args.quiet else logging.INFO)
     log = logging.getLogger(__name__)
 
-    # prepare to filter on the basis of single or dual barcodes
+    # when provided with dual barcodes, concatenate into a single
+    # namedtuple with attributes qual and qual1; generate a filter
+    # function appropriate for either case.
     if len(args.index) == 1:
         bcseqs = fastqlite(args.index[0])
         qual_filter = get_qual_filter(args.min_qual, args.qual_offset)
@@ -177,6 +183,7 @@ def main(arguments=None):
     else:
         log.error('error: please specify either one or two index files')
 
+    # use bc1 to determine most common barcode
     bc1, bc2 = tee(bcseqs, 2)
 
     # determine the most common barcode
@@ -212,7 +219,6 @@ def main(arguments=None):
     seqs = fastqlite(args.fastq)
 
     ifilterfun = ifilterfalse if args.invert else ifilter
-
     filtered = ifilterfun(match_filter, izip(seqs, bc2))
 
     if args.qual_filter:
