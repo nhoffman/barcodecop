@@ -24,10 +24,11 @@ reads from an accompanying fastq file.
 Command line arguments::
 
   usage: barcodecop [-h] [-f file.fastq[.bz2|.gz]] [-o OUTFILE] [--snifflimit N]
-		    [--head N] [--min-pct-assignment PERCENT] [--invert] [-c]
-		    [-q] [-V]
-		    file.fastq[.bz2|.gz] [file.fastq[.bz2|.gz] ...]
-
+                    [--head N] [--invert] [-q] [-V]
+                    [--min-pct-assignment PERCENT] [--strict] [-c]
+                    [--qual-filter] [-p MIN_QUAL] [--encoding {phred}]
+                    file.fastq[.bz2|.gz] [file.fastq[.bz2|.gz] ...]
+		  
   Filter fastq files, limiting to exact barcode matches.
 
   Input and output files may be compressed as indicated by a .bz2 or .gz
@@ -46,20 +47,27 @@ Command line arguments::
     --snifflimit N        read no more than N records from the index file
 			  [10000]
     --head N              limit the output file to N records
-    --min-pct-assignment PERCENT
-			  raise error unless the most common barcode represents
-			  at least PERCENT of the total [90.0]
-    --invert              include only sequences *not* matching the most common
-			  barcode
-    --qual-filter         filter reads based on minimum index quality
-    -p MIN_QUAL, --min-qual MIN_QUAL
-                          minimum mean quality of index in order to be kept [26]
-    --qual-offset QUAL_OFFSET
-                          offset value for the quality score of each position
-                          [33]
-    -c, --show-counts     tabulate barcode counts and exit
+    --invert              include only sequences failing filtering criteria
     -q, --quiet           minimize messages to stderr
     -V, --version         Print the version number and exit
+
+  Barcode matching options:
+    --min-pct-assignment PERCENT
+                          warn (or fail with an error; see --strict) if the most
+                          common barcode represents less than PERCENT of the
+                          total [90.0]
+    --strict              fail if conditions of --min-pct-assignment are not met
+    -c, --show-counts     tabulate barcode counts and exit
+
+  Barcode quality filtering options:
+    --qual-filter         filter reads based on minimum index quality [default:
+                          no quality filter]
+    -p MIN_QUAL, --min-qual MIN_QUAL
+                          reject seqs with mean barcode quality score less than
+                          this value; for dual index, both barcodes must meet
+                          the threshold [26]
+    --encoding {phred}    quality score encoding; see
+                          https://en.wikipedia.org/wiki/FASTQ_format [phred]
 
 
 Both single and dual-indexing are supported. For example::
