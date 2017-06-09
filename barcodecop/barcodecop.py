@@ -16,11 +16,14 @@ import logging
 from collections import namedtuple
 from fastalite import fastqlite, Opener
 
-from . import MIN_QUAL, QUAL_OFFSET
 try:
     from . import __version__
 except:
     __version__ = ''
+
+# default values
+MIN_QUAL = 26
+ILLUMINA_QUAL_OFFSET = 33
 
 
 class VersionAction(argparse._VersionAction):
@@ -118,11 +121,10 @@ def main(arguments=None):
         help='filter reads based on minimum index quality')
     parser.add_argument(
         '-p', '--min-qual', type=int, default=MIN_QUAL,
-        help='minimum mean quality of index in order to be kept [{}]'.format(MIN_QUAL))
-    # note the default offset of 33 is applicable for illumina reads (Phred+33)
+        help='minimum mean quality of index in order to be kept [%(default)s]')
     parser.add_argument(
-        '--qual-offset', type=int, default=QUAL_OFFSET,
-        help='offset value for the quality score of each position [{}]'.format(QUAL_OFFSET))
+        '--qual-offset', type=int, default=ILLUMINA_QUAL_OFFSET,
+        help='offset value for calculating quality score [%(default)s]')
 
     # parser.add_argument('--format', choices=['fasta', 'fastq'], default='fastq')
     parser.add_argument(
