@@ -7,23 +7,26 @@ Enforce exact barcode matches in demultiplexed MiSeq reads
 .. image:: https://travis-ci.org/nhoffman/barcodecop.svg?branch=master
     :target: https://travis-ci.org/nhoffman/barcodecop
 
+Barcode mis-assignment represent significant problem for ultra
+sensitive assays that attempt to draw conclusions from the presence of
+very low prevalence reads within a specimen.
+
 The onboard software used for demultiplexing on the Illumina MiSeq
 cannot be configured to enforce exact barcode matches. As a result, a
 minority of reads (up to about 5% in my tests) are assigned to a
-specimen on the basis of a partial barcode match. It turns out that
-some fraction of these less-than-exact matches are mis-assigned from
-other specimens (as of course are some smaller fraction of the exact
-matches, but we can't identify these as easily). This mis-assignment
-is a problem for ultra sensitive assays that attempt to draw
-conclusions from the presence of very low prevalence reads.  Another 
-issue is low quality barcodes - if the quality score of barcodes is 
-sufficiently low enough it indicates that they may be misassigned to 
-reads.
+specimen on the basis of a partial barcode match. Somewhat
+anecdotally, these less-than-exact matches appear to have a higher
+likelihood of mis-assignment.
+
+Probably an even more important predictor of barcode mis-assignment
+is barcode read quality. [Wright and Vetsigian (2016)](https://dx.doi.org/10.1186%2Fs12864-016-3217-x) showed that an
+average barcode quality score threshold of 26 prevented most read
+mis-assignment on the Illumina platform.
 
 This package provides the ``barcodecop`` command that uses the index
-reads to determine the most prevalent barcode sequence and filter
-reads from an accompanying fastq file and optionally filters reads 
-with low quality barcodes.
+reads to determine the most prevalent barcode sequence, and removes
+reads without exact barcode matches from an accompanying fastq file,
+and optionally filters reads based on average barcode quality score.
 
 Command line arguments::
 
@@ -32,7 +35,7 @@ Command line arguments::
                     [--min-pct-assignment PERCENT] [--strict] [-c]
                     [--qual-filter] [-p MIN_QUAL] [--encoding {phred}]
                     file.fastq[.bz2|.gz] [file.fastq[.bz2|.gz] ...]
-		  
+
   Filter fastq files, limiting to exact barcode matches.
 
   Input and output files may be compressed as indicated by a .bz2 or .gz
