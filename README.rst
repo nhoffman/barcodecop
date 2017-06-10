@@ -7,9 +7,11 @@ Enforce exact barcode matches in demultiplexed MiSeq reads
 .. image:: https://travis-ci.org/nhoffman/barcodecop.svg?branch=master
     :target: https://travis-ci.org/nhoffman/barcodecop
 
-Barcode mis-assignment represent significant problem for ultra
-sensitive assays that attempt to draw conclusions from the presence of
-very low prevalence reads within a specimen.
+Barcode mis-assignment represents a significant problem for ultra
+sensitive assays that strongly interpret the presence of very low
+prevalence reads within a specimen. In addition, mis-assignment of
+reads between specimens can create the appearance of template
+contamination in negative controls.
 
 The onboard software used for demultiplexing on the Illumina MiSeq
 cannot be configured to enforce exact barcode matches. As a result, a
