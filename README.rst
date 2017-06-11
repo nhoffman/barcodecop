@@ -20,8 +20,9 @@ specimen on the basis of a partial barcode match. Somewhat
 anecdotally, these less-than-exact matches appear to have a higher
 likelihood of mis-assignment.
 
-Probably an even more important predictor of barcode mis-assignment
-is barcode read quality. `Wright and Vetsigian (2016)<https://dx.doi.org/10.1186%2Fs12864-016-3217-x>`_ showed that an
+Probably an even more important predictor of barcode mis-assignment is
+barcode read quality. Wright and Vetsigian (2016)
+(https://dx.doi.org/10.1186%2Fs12864-016-3217-x) showed that an
 average barcode quality score threshold of 26 prevented most read
 mis-assignment on the Illumina platform.
 
