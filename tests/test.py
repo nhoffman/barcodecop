@@ -13,17 +13,22 @@ from barcodecop.barcodecop import main
 
 testfiles = 'testfiles'
 barcodes = path.join(testfiles, 'barcodes.fastq.gz')
+barcodes_qual = path.join(testfiles, 'barcodes_qual.fastq.gz')
 outdir = 'test_output'
 most_common = 'TATTACTCTA'
 dual1 = path.join(testfiles, 'dual_I1.fastq.gz')
 dual2 = path.join(testfiles, 'dual_I2.fastq.gz')
+dual_qual1 = path.join(testfiles, 'dual_I1_qual.fastq.gz')
+dual_qual2 = path.join(testfiles, 'dual_I2_qual.fastq.gz')
 most_common_dual = 'ACTGGTAGGA+TTCTCTCCAG'
 
 
 class Capturing(list):
+
     """
     From http://stackoverflow.com/questions/16571150/how-to-capture-stdout-output-from-a-python-function-call
     """
+
     def __enter__(self):
         self._stdout = sys.stdout
         sys.stdout = self._stringio = StringIO()
@@ -65,7 +70,8 @@ class TestSingleIndex(TestCase):
         self.assertEqual(output[0].split('\t')[0], most_common)
 
     def test_02(self):
-        # filter barcode file using itself; get back only the most common barcode
+        # filter barcode file using itself; get back only the most common
+        # barcode
         with Capturing() as output:
             main([barcodes, '-f', barcodes])
         desc, seqs, __, quals = zip(*grouper(output, 4))
@@ -98,8 +104,42 @@ class TestSingleIndex(TestCase):
                 main,
                 [barcodes, '-f', barcodes, '--min-pct-assignment', '100', '--strict'])
 
+    def test_qual_01(self):
+        # test quality filtering with defaults
+        with Capturing() as output:
+            main([barcodes_qual, '-f', barcodes_qual, '--qual-filter'])
+        desc, seqs, __, quals = zip(*grouper(output, 4))
+        self.assertEqual(len(seqs), 4)
+
+    def test_qual_02(self):
+        # test quality filtering with reduced threshold
+        with Capturing() as output:
+            main(
+                [barcodes_qual, '-f', barcodes_qual, '--qual-filter', '-p', '2'])
+        desc, seqs, __, quals = zip(*grouper(output, 4))
+        self.assertEqual(len(seqs), 5)
+
+    # TODO: test non-default offset, but will need sequences with the
+    # appropriate encoding
+
+    # def test_qual_03(self):
+    #     # test quality filtering with modified offset
+    #     with Capturing() as output:
+    #         main(
+    #             [barcodes_qual,
+    #              '-f',
+    #              barcodes_qual,
+    #              '--qual-filter',
+    #              '-p',
+    #              '1',
+    #              '--qual-offset',
+    #              '34'])
+    #     desc, seqs, __, quals = zip(*grouper(output, 4))
+    #     self.assertEqual(len(seqs), 5)
+
 
 class TestDualIndex(TestCase):
+
     def test_01(self):
         with Capturing() as output:
             # because main() is called in the same global context in
@@ -108,8 +148,16 @@ class TestDualIndex(TestCase):
         self.assertEqual(output[0].split('\t')[0], most_common_dual)
 
     def test_02(self):
-        # filter barcode file using itself; get back only the most common barcode
+        # filter barcode file using itself; get back only the most common
+        # barcode
         with Capturing() as output:
             main([dual1, dual2, '-f', dual1])
         desc, seqs, __, quals = zip(*grouper(output, 4))
         self.assertSetEqual(set(seqs), {most_common_dual.split('+')[0]})
+
+    def test_qual_dual(self):
+        # test quality filtering with defaults
+        with Capturing() as output:
+            main([dual_qual1, dual_qual2, '-f', dual_qual1, '--qual-filter'])
+        desc, seqs, __, quals = zip(*grouper(output, 4))
+        self.assertEqual(len(seqs), 5)

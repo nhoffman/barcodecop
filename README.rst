@@ -7,26 +7,37 @@ Enforce exact barcode matches in demultiplexed MiSeq reads
 .. image:: https://travis-ci.org/nhoffman/barcodecop.svg?branch=master
     :target: https://travis-ci.org/nhoffman/barcodecop
 
+Barcode mis-assignment represents a significant problem for ultra
+sensitive assays that strongly interpret the presence of very low
+prevalence reads within a specimen. In addition, mis-assignment of
+reads between specimens can create the appearance of template
+contamination in negative controls.
+
 The onboard software used for demultiplexing on the Illumina MiSeq
 cannot be configured to enforce exact barcode matches. As a result, a
 minority of reads (up to about 5% in my tests) are assigned to a
-specimen on the basis of a partial barcode match. It turns out that
-some fraction of these less-than-exact matches are mis-assigned from
-other specimens (as of course are some smaller fraction of the exact
-matches, but we can't identify these as easily). This mis-assignment
-is a problem for ultra sensitive assays that attempt to draw
-conclusions from the presence of very low prevalence reads.
+specimen on the basis of a partial barcode match. Somewhat
+anecdotally, these less-than-exact matches appear to have a higher
+likelihood of mis-assignment.
+
+Probably an even more important predictor of barcode mis-assignment is
+barcode read quality. Wright and Vetsigian (2016)
+(https://dx.doi.org/10.1186%2Fs12864-016-3217-x) showed that an
+average barcode quality score threshold of 26 prevented most read
+mis-assignment on the Illumina platform.
 
 This package provides the ``barcodecop`` command that uses the index
-reads to determine the most prevalent barcode sequence and filter
-reads from an accompanying fastq file.
+reads to determine the most prevalent barcode sequence, and removes
+reads without exact barcode matches from an accompanying fastq file,
+and optionally filters reads based on average barcode quality score.
 
 Command line arguments::
 
   usage: barcodecop [-h] [-f file.fastq[.bz2|.gz]] [-o OUTFILE] [--snifflimit N]
-		    [--head N] [--min-pct-assignment PERCENT] [--invert] [-c]
-		    [-q] [-V]
-		    file.fastq[.bz2|.gz] [file.fastq[.bz2|.gz] ...]
+                    [--head N] [--invert] [-q] [-V]
+                    [--min-pct-assignment PERCENT] [--strict] [-c]
+                    [--qual-filter] [-p MIN_QUAL] [--encoding {phred}]
+                    file.fastq[.bz2|.gz] [file.fastq[.bz2|.gz] ...]
 
   Filter fastq files, limiting to exact barcode matches.
 
@@ -46,14 +57,27 @@ Command line arguments::
     --snifflimit N        read no more than N records from the index file
 			  [10000]
     --head N              limit the output file to N records
-    --min-pct-assignment PERCENT
-			  raise error unless the most common barcode represents
-			  at least PERCENT of the total [90.0]
-    --invert              include only sequences *not* matching the most common
-			  barcode
-    -c, --show-counts     tabulate barcode counts and exit
+    --invert              include only sequences failing filtering criteria
     -q, --quiet           minimize messages to stderr
     -V, --version         Print the version number and exit
+
+  Barcode matching options:
+    --min-pct-assignment PERCENT
+                          warn (or fail with an error; see --strict) if the most
+                          common barcode represents less than PERCENT of the
+                          total [90.0]
+    --strict              fail if conditions of --min-pct-assignment are not met
+    -c, --show-counts     tabulate barcode counts and exit
+
+  Barcode quality filtering options:
+    --qual-filter         filter reads based on minimum index quality [default:
+                          no quality filter]
+    -p MIN_QUAL, --min-qual MIN_QUAL
+                          reject seqs with mean barcode quality score less than
+                          this value; for dual index, both barcodes must meet
+                          the threshold [26]
+    --encoding {phred}    quality score encoding; see
+                          https://en.wikipedia.org/wiki/FASTQ_format [phred]
 
 
 Both single and dual-indexing are supported. For example::
