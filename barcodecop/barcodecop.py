@@ -52,11 +52,11 @@ def get_match_filter(barcode):
 def get_qual_filter(min_qual, encoding, paired=False):
     """Return a function for filtering a pair of (seq, bc) namedtuple
     pairs. The function returns True if the average barcode quality
-    score calculated using the provided encoding method is at least 
-    min_qual. If``paired`` is True, ``bc`` must be a namedtuple with 
-    attributes qual and qual2; the function returns True if the average 
-    barcode quality score calculated using the provided encoding method 
-    is at least min_qual.  The function defined for each encoding method 
+    score calculated using the provided encoding method is at least
+    min_qual. If``paired`` is True, ``bc`` must be a namedtuple with
+    attributes qual and qual2; the function returns True if the average
+    barcode quality score calculated using the provided encoding method
+    is at least min_qual.  The function defined for each encoding method
     is specified as ``get_{}_encoding``.  Currently only Sanger phred
     encoding is supported -- see ``get_phred_encoding``.
 
@@ -149,6 +149,10 @@ def main(arguments=None):
     match_options = parser.add_argument_group('Barcode matching options')
 
     match_options.add_argument(
+        '--match-filter', action='store_true', default=False,
+        help=('filter reads based on exact match to most common barcode '
+              '[default: no match filter]'))
+    match_options.add_argument(
         '--min-pct-assignment', type=float, default=90.0, metavar='PERCENT',
         help=("""warn (or fail with an error; see --strict) if the
                most common barcode represents less than PERCENT of the
@@ -225,10 +229,13 @@ def main(arguments=None):
         log.error('specify a fastq format file to filter using -f/--fastq')
         sys.exit(1)
 
-    seqs = fastqlite(args.fastq)
-
     ifilterfun = ifilterfalse if args.invert else ifilter
-    filtered = ifilterfun(get_match_filter(most_common_bc), izip_longest(seqs, bc2))
+
+    seqs = fastqlite(args.fastq)
+    filtered = izip_longest(seqs, bc2)
+
+    if args.match_filter:
+        filtered = ifilterfun(get_match_filter(most_common_bc), filtered)
 
     if args.qual_filter:
         filtered = ifilterfun(qual_filter, filtered)

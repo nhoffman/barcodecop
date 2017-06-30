@@ -73,7 +73,7 @@ class TestSingleIndex(TestCase):
         # filter barcode file using itself; get back only the most common
         # barcode
         with Capturing() as output:
-            main([barcodes, '-f', barcodes])
+            main([barcodes, '-f', barcodes, '--match-filter'])
         desc, seqs, __, quals = zip(*grouper(output, 4))
         self.assertSetEqual(set(seqs), {most_common})
 
@@ -87,7 +87,7 @@ class TestSingleIndex(TestCase):
     def test_04(self):
         # --invert option removes all instances of the most common bc
         with Capturing() as output:
-            main([barcodes, '-f', barcodes, '--invert'])
+            main([barcodes, '-f', barcodes, '--invert', '--match-filter'])
         desc, seqs, __, quals = zip(*grouper(output, 4))
         self.assertNotIn(most_common, set(seqs))
 
@@ -151,7 +151,7 @@ class TestDualIndex(TestCase):
         # filter barcode file using itself; get back only the most common
         # barcode
         with Capturing() as output:
-            main([dual1, dual2, '-f', dual1])
+            main([dual1, dual2, '-f', dual1, '--match-filter'])
         desc, seqs, __, quals = zip(*grouper(output, 4))
         self.assertSetEqual(set(seqs), {most_common_dual.split('+')[0]})
 
