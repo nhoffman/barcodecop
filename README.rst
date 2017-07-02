@@ -2,7 +2,7 @@
  barcodecop
 ============
 
-Enforce exact barcode matches in demultiplexed MiSeq reads
+Enforce barcode match stringency and read quality in demultiplexed MiSeq reads.
 
 .. image:: https://travis-ci.org/nhoffman/barcodecop.svg?branch=master
     :target: https://travis-ci.org/nhoffman/barcodecop
@@ -13,23 +13,25 @@ prevalence reads within a specimen. In addition, mis-assignment of
 reads between specimens can create the appearance of template
 contamination in negative controls.
 
-The onboard software used for demultiplexing on the Illumina MiSeq
-cannot be configured to enforce exact barcode matches. As a result, a
-minority of reads (up to about 5% in my tests) are assigned to a
-specimen on the basis of a partial barcode match. Somewhat
-anecdotally, these less-than-exact matches appear to have a higher
-likelihood of mis-assignment.
-
-Probably an even more important predictor of barcode mis-assignment is
-barcode read quality. Wright and Vetsigian (2016)
+It turns out that barcode read quality is a predictor of barcode
+mis-assignment. Wright and Vetsigian (2016)
 (https://dx.doi.org/10.1186%2Fs12864-016-3217-x) showed that an
 average barcode quality score threshold of 26 prevented most read
 mis-assignment on the Illumina platform.
 
+In addition, the onboard software used for demultiplexing on the
+Illumina MiSeq cannot be configured to enforce exact barcode
+matches. As a result, a minority of reads (up to about 5% in my tests)
+are assigned to a specimen on the basis of a partial barcode
+match. Somewhat anecdotally, these less-than-exact matches appear to
+have a higher likelihood of mis-assignment as well, but the effect is
+dependent on barcode sequence and which combinations of barcodes are
+used in the same library.
+
 This package provides the ``barcodecop`` command that uses the index
 reads to determine the most prevalent barcode sequence, and removes
-reads without exact barcode matches from an accompanying fastq file,
-and optionally filters reads based on average barcode quality score.
+reads without exact barcode matches from an accompanying fastq
+file. It also filters reads based on average barcode quality score.
 
 Command line arguments::
 

@@ -10,9 +10,18 @@ suffix.
 import argparse
 import sys
 from collections import Counter
-from itertools import islice, tee, izip_longest, ifilter, ifilterfalse
 import logging
 from collections import namedtuple
+
+from itertools import islice, tee
+try:
+    from itertools import filterfalse, zip_longest
+except ImportError:
+    from itertools import izip_longest as zip_longest
+    from itertools import ifilterfalse as filterfalse
+    from itertools import ifilter as filter
+
+
 from fastalite import fastqlite, Opener
 
 try:
@@ -107,12 +116,12 @@ def seqdiff(s1, s2):
 
 
 def as_fastq(seq):
-    return '@{seq.description}\n{seq.seq}\n+\n{seq.qual}\n'.format(seq=seq)
+    return u'@{seq.description}\n{seq.seq}\n+\n{seq.qual}\n'.format(seq=seq)
 
 
 def combine_dual_indices(file1, file2):
     Seq = namedtuple('Seq', ['id', 'seq', 'qual', 'qual2'])
-    for i1, i2 in izip_longest(fastqlite(file1), fastqlite(file2)):
+    for i1, i2 in zip_longest(fastqlite(file1), fastqlite(file2)):
         assert i1.id == i2.id
         yield Seq(id=i1.id, seq=i1.seq + '+' + i2.seq, qual=i1.qual, qual2=i2.qual)
 
@@ -204,7 +213,7 @@ def main(arguments=None):
     # determine the most common barcode
     barcode_counts = Counter([str(seq.seq)
                               for seq in islice(bc1, args.snifflimit)])
-    barcodes, counts = zip(*barcode_counts.most_common())
+    barcodes, counts = list(zip(*barcode_counts.most_common()))
 
     most_common_bc = barcodes[0]
     most_common_pct = 100 * float(counts[0]) / sum(counts)
@@ -213,7 +222,7 @@ def main(arguments=None):
 
     if args.show_counts:
         for bc, count in barcode_counts.most_common():
-            print('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count))
+            print(('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count)))
         return None
 
     if most_common_pct < args.min_pct_assignment:
@@ -229,10 +238,10 @@ def main(arguments=None):
         log.error('specify a fastq format file to filter using -f/--fastq')
         sys.exit(1)
 
-    ifilterfun = ifilterfalse if args.invert else ifilter
+    ifilterfun = filterfalse if args.invert else filter
 
     seqs = fastqlite(args.fastq)
-    filtered = izip_longest(seqs, bc2)
+    filtered = zip_longest(seqs, bc2)
 
     if args.match_filter:
         filtered = ifilterfun(get_match_filter(most_common_bc), filtered)

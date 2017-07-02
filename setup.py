@@ -14,7 +14,8 @@ from barcodecop import __version__
 setup(
     author='Noah Hoffman',
     author_email='noah.hoffman@gmail.com',
-    description='Enforce exact barcode matches in demultiplexed MiSeq reads',
+    description=('Enforce barcode match stringency and read '
+                 'quality in demultiplexed MiSeq reads'),
     url='https://github.com/nhoffman/barcodecop',
     name='barcodecop',
     packages=find_packages(),
@@ -24,12 +25,16 @@ setup(
     version=__version__,
     test_suite='tests',
     install_requires=[
-          'fastalite==0.2',
+          'fastalite==0.3',
       ],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'Operating System :: POSIX',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
 )

@@ -5,8 +5,17 @@ import os
 from os import path
 import inspect
 from unittest import TestCase
-from cStringIO import StringIO
-from itertools import izip_longest
+
+# in python2.7, io.StringIO cannot accept str output
+try:
+    from cStringIO import StringIO as IO
+except ImportError:
+    from io import StringIO as IO
+
+try:
+    from itertools import zip_longest
+except ImportError:
+    from itertools import izip_longest as zip_longest
 
 # from fastalite import fastalite, fastqlite, Opener
 from barcodecop.barcodecop import main
@@ -31,12 +40,12 @@ class Capturing(list):
 
     def __enter__(self):
         self._stdout = sys.stdout
-        sys.stdout = self._stringio = StringIO()
+        sys.stdout = self._stringio = IO()
         return self
 
     def __exit__(self, *args):
         self.extend(self._stringio.getvalue().splitlines())
-        del self._stringio    # free up some memory
+        del self._stringio   # free up some memory
         sys.stdout = self._stdout
 
 
@@ -57,7 +66,7 @@ def grouper(iterable, n, fillvalue=None):
     "Collect data into fixed-length chunks or blocks"
     # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
     args = [iter(iterable)] * n
-    return izip_longest(fillvalue=fillvalue, *args)
+    return zip_longest(fillvalue=fillvalue, *args)
 
 
 class TestSingleIndex(TestCase):
@@ -74,21 +83,21 @@ class TestSingleIndex(TestCase):
         # barcode
         with Capturing() as output:
             main([barcodes, '-f', barcodes, '--match-filter'])
-        desc, seqs, __, quals = zip(*grouper(output, 4))
+        desc, seqs, __, quals = list(zip(*grouper(output, 4)))
         self.assertSetEqual(set(seqs), {most_common})
 
     def test_03(self):
         # --head returns the specified number of records
         with Capturing() as output:
             main([barcodes, '-f', barcodes, '--head', '10'])
-        desc, seqs, __, quals = zip(*grouper(output, 4))
+        desc, seqs, __, quals = list(zip(*grouper(output, 4)))
         self.assertEqual(len(seqs), 10)
 
     def test_04(self):
         # --invert option removes all instances of the most common bc
         with Capturing() as output:
             main([barcodes, '-f', barcodes, '--invert', '--match-filter'])
-        desc, seqs, __, quals = zip(*grouper(output, 4))
+        desc, seqs, __, quals = list(zip(*grouper(output, 4)))
         self.assertNotIn(most_common, set(seqs))
 
     def test_05(self):
@@ -108,7 +117,7 @@ class TestSingleIndex(TestCase):
         # test quality filtering with defaults
         with Capturing() as output:
             main([barcodes_qual, '-f', barcodes_qual, '--qual-filter'])
-        desc, seqs, __, quals = zip(*grouper(output, 4))
+        desc, seqs, __, quals = list(zip(*grouper(output, 4)))
         self.assertEqual(len(seqs), 4)
 
     def test_qual_02(self):
@@ -116,7 +125,7 @@ class TestSingleIndex(TestCase):
         with Capturing() as output:
             main(
                 [barcodes_qual, '-f', barcodes_qual, '--qual-filter', '-p', '2'])
-        desc, seqs, __, quals = zip(*grouper(output, 4))
+        desc, seqs, __, quals = list(zip(*grouper(output, 4)))
         self.assertEqual(len(seqs), 5)
 
     # TODO: test non-default offset, but will need sequences with the
@@ -152,12 +161,12 @@ class TestDualIndex(TestCase):
         # barcode
         with Capturing() as output:
             main([dual1, dual2, '-f', dual1, '--match-filter'])
-        desc, seqs, __, quals = zip(*grouper(output, 4))
+        desc, seqs, __, quals = list(zip(*grouper(output, 4)))
         self.assertSetEqual(set(seqs), {most_common_dual.split('+')[0]})
 
     def test_qual_dual(self):
         # test quality filtering with defaults
         with Capturing() as output:
             main([dual_qual1, dual_qual2, '-f', dual_qual1, '--qual-filter'])
-        desc, seqs, __, quals = zip(*grouper(output, 4))
+        desc, seqs, __, quals = list(zip(*grouper(output, 4)))
         self.assertEqual(len(seqs), 5)
