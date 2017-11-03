@@ -172,6 +172,9 @@ def main(arguments=None):
     match_options.add_argument(
         '-c', '--show-counts', action='store_true', default=False,
         help='tabulate barcode counts and exit')
+    match_options.add_argument(
+        '-t', '--tsv-counts', type=argparse.FileType('w'),
+        help='tabulate barcode counts and store as a TSV')
 
     qual_options = parser.add_argument_group('Barcode quality filtering options')
 
@@ -220,6 +223,10 @@ def main(arguments=None):
     log.info('most common barcode: {} ({}/{} = {:.2f}%)'.format(
         most_common_bc, counts[0], sum(counts), most_common_pct))
 
+    if args.tsv_counts:
+        for bc, count in barcode_counts.most_common():
+            args.tsv_counts.write('{}\t{}\t{}\n'.format(bc, seqdiff(most_common_bc, bc), count))
+        
     if args.show_counts:
         for bc, count in barcode_counts.most_common():
             print(('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count)))
