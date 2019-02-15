@@ -14,7 +14,7 @@ from collections import Counter
 import logging
 from collections import namedtuple
 
-from itertools import islice, tee
+from itertools import islice, tee, repeat
 try:
     from itertools import filterfalse, zip_longest
 except ImportError:
@@ -25,9 +25,11 @@ except ImportError:
 
 from fastalite import fastqlite, Opener
 
+log = logging.getLogger(__name__)
+
 try:
     from . import __version__
-except:
+except Exception:
     __version__ = ''
 
 # default values
@@ -46,20 +48,60 @@ class VersionAction(argparse._VersionAction):
         sys.exit(0)
 
 
-def get_match_filter(barcode):
-    """Return a function for filtering a pair of (seq, bc) namedtuple
-    pairs; the function returns True if bc.seq == barcode
+# def get_match_filter(barcode):
+#     """Return a function for filtering a pair of (seq, bc) namedtuple
+#     pairs; the function returns True if bc.seq == barcode
+
+#     """
+
+#     def filterfun(pair):
+#         seq, bc = pair
+#         return str(bc.seq) == barcode
+
+#     return filterfun
+
+
+def get_match_filter(bcseqs, snifflimit=None):
+    """Provides a filter for exact bacode matches.
+
+    * bcseqs - an iterator of Seq namedtuples
+    * snifflimit - maximum number of barcodes to count.
+
+    Returns ``(filterfun, counts)``. ``filterfun`` is a function for
+    filtering a pair of (seq, bc) namedtuple pairs; the function
+    returns True if bc.seq == barcode. ``counts`` is a
+    collections.Counter object providing barcode counts.
+
+    Note that ``bcseqs`` is consumed in this function.
 
     """
 
+    # determine the most common barcode
+    counts = Counter(
+        [str(seq.seq) for seq in islice(bcseqs, snifflimit)])
+
+    most_common, __ = counts.most_common(1)[0]
+
     def filterfun(pair):
         seq, bc = pair
-        return str(bc.seq) == barcode
+        return str(bc.seq) == most_common
 
-    return filterfun
+    return filterfun, counts
 
 
-def get_qual_filter(min_qual, encoding, paired=False):
+def check_barcode_freqs(barcode_counts, min_pct=0):
+    barcodes, counts = list(zip(*barcode_counts.most_common()))
+    most_common_bc = barcodes[0]
+    most_common_pct = 100 * float(counts[0]) / sum(counts)
+
+    log.info('most common barcode: {} ({}/{} = {:.2f}%)'.format(
+        most_common_bc, counts[0], sum(counts), most_common_pct))
+
+    if most_common_pct < min_pct:
+        raise ValueError('frequency of most common barcode < {}%'.format(min_pct))
+
+
+def get_qual_filter2(min_qual, encoding, paired=False):
     """Return a function for filtering a pair of (seq, bc) namedtuple
     pairs. The function returns True if the average barcode quality
     score calculated using the provided encoding method is at least
@@ -83,6 +125,25 @@ def get_qual_filter(min_qual, encoding, paired=False):
         def filterfun(pair):
             seq, bc = pair
             return check_score(encoding, min_qual, bc.qual)
+
+    return filterfun
+
+
+def get_qual_filter(min_qual, encoding):
+    """Return a function for filtering a pair of (seq, bc) namedtuple
+    pairs. The function returns True if the average barcode quality
+    score calculated using the provided encoding method is at least
+    min_qual. The function defined for a encoding method
+    is specified as ``get_{}_encoding``.  Currently only Sanger phred
+    encoding is supported -- see ``get_phred_encoding``.
+
+    """
+
+    encoding = globals()['get_{}_encoding'.format(encoding)]()
+
+    def filterfun(pair):
+        seq, bc = pair
+        return check_score(encoding, min_qual, bc.qual)
 
     return filterfun
 
@@ -141,9 +202,6 @@ def main(arguments=None):
         '-o', '--outfile', default=sys.stdout, type=Opener('w'),
         help='output fastq')
     parser.add_argument(
-        '--snifflimit', type=int, default=10000, metavar='N',
-        help='read no more than N records from the index file [%(default)s]')
-    parser.add_argument(
         '--head', type=int, metavar='N',
         help='limit the output file to N records')
     parser.add_argument(
@@ -162,6 +220,10 @@ def main(arguments=None):
         '--match-filter', action='store_true', default=False,
         help=('filter reads based on exact match to most common barcode '
               '[default: no match filter]'))
+    parser.add_argument(
+        '--snifflimit', type=int, default=10000, metavar='N',
+        help="""read no more than N records from the index file to
+        calculate most common barcode [%(default)s]""")
     match_options.add_argument(
         '--min-pct-assignment', type=float, default=90.0, metavar='PERCENT',
         help=("""warn (or fail with an error; see --strict) if the
@@ -171,9 +233,6 @@ def main(arguments=None):
         '--strict', action='store_true', default=False,
         help=("""fail if conditions of --min-pct-assignment are not met"""))
     match_options.add_argument(
-        '-c', '--show-counts', action='store_true', default=False,
-        help='tabulate barcode counts and exit')
-    match_options.add_argument(
         '-C', '--csv-counts', type=argparse.FileType('w'), metavar='FILE',
         help='tabulate barcode counts and store as a CSV')
 
@@ -181,7 +240,8 @@ def main(arguments=None):
 
     qual_options.add_argument(
         '--qual-filter', action='store_true', default=False,
-        help='filter reads based on minimum index quality [default: no quality filter]')
+        help="""filter reads based on minimum index quality [default:
+        no quality filter]""")
     qual_options.add_argument(
         '-p', '--min-qual', type=int, default=MIN_QUAL,
         help="""reject seqs with mean barcode quality score less than
@@ -197,54 +257,31 @@ def main(arguments=None):
     logging.basicConfig(
         format='%(message)s',
         level=logging.ERROR if args.quiet else logging.INFO)
-    log = logging.getLogger(__name__)
 
-    # when provided with dual barcodes, concatenate into a single
-    # namedtuple with attributes qual and qual1; generate a filter
-    # function appropriate for either case.
-    if len(args.index) == 1:
-        bcseqs = fastqlite(args.index[0])
+    keep = repeat(True)
+    for bcfile in args.index:
+        bcseqs = fastqlite(bcfile)
+
         qual_filter = get_qual_filter(args.min_qual, args.encoding)
-    elif len(args.index) == 2:
-        qual_filter = get_qual_filter(args.min_qual, args.encoding, paired=True)
-        bcseqs = combine_dual_indices(*args.index)
-    else:
-        log.error('error: please specify either one or two index files')
 
-    # use bc1 to determine most common barcode
-    bc1, bc2 = tee(bcseqs, 2)
+        # avoid consuming bcseqs while determining most frequent barcode
+        bcseqs, _bcseqs = tee(bcseqs, 2)
+        matchfun, bccounts = get_match_filter(_bcseqs, args.snifflimit)
 
-    # determine the most common barcode
-    barcode_counts = Counter([str(seq.seq)
-                              for seq in islice(bc1, args.snifflimit)])
-    barcodes, counts = list(zip(*barcode_counts.most_common()))
+        try:
+            check_barcode_freqs(bccounts, args.min_pct_assignment)
+        except ValueError as err:
+            log.error(str(err))
+            if args.strict:
+                exit(1)
 
-    most_common_bc = barcodes[0]
-    most_common_pct = 100 * float(counts[0]) / sum(counts)
-    log.info('most common barcode: {} ({}/{} = {:.2f}%)'.format(
-        most_common_bc, counts[0], sum(counts), most_common_pct))
-
-    if args.csv_counts:
-        # Create a writer using the CSV module
-        csv_counts_writer = csv.writer(args.csv_counts)
-        # Write a header
-        csv_counts_writer.writerow(['barcode', 'diff_most_common','count'])
-        for bc, count in barcode_counts.most_common():
-            csv_counts_writer.writerow([bc, seqdiff(most_common_bc,bc), count])
-        
-    if args.show_counts:
-        for bc, count in barcode_counts.most_common():
-            print(('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count)))
-        return None
-
-    if most_common_pct < args.min_pct_assignment:
-        msg = 'frequency of most common barcode is less than {}%'.format(
-            args.min_pct_assignment)
-        if args.strict:
-            log.error('Error: ' + msg)
-            sys.exit(1)
-        else:
-            log.warning('Warning: ' + msg)
+    # if args.csv_counts:
+    #     # Create a writer using the CSV module
+    #     csv_counts_writer = csv.writer(args.csv_counts)
+    #     # Write a header
+    #     csv_counts_writer.writerow(['barcode', 'diff_most_common', 'count'])
+    #     for bc, count in barcode_counts.most_common():
+    #         csv_counts_writer.writerow([bc, seqdiff(most_common_bc, bc), count])
 
     if not args.fastq:
         log.error('specify a fastq format file to filter using -f/--fastq')
