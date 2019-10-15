@@ -150,6 +150,9 @@ def main(arguments=None):
         '--invert', action='store_true', default=False,
         help='include only sequences failing filtering criteria')
     parser.add_argument(
+        '--allow-empty', action='store_true', default=False,
+        help='exit without error if input contains no reads')
+    parser.add_argument(
         '-q', '--quiet', action='store_true', default=False,
         help='minimize messages to stderr')
     parser.add_argument(
@@ -215,8 +218,16 @@ def main(arguments=None):
     bc1, bc2 = tee(bcseqs, 2)
 
     # determine the most common barcode
-    barcode_counts = Counter([str(seq.seq)
-                              for seq in islice(bc1, args.snifflimit)])
+    barcode_counts = Counter(
+        [str(seq.seq) for seq in islice(bc1, args.snifflimit)])
+
+    if not barcode_counts.most_common():
+        log.error('no reads, exiting')
+        if args.allow_empty:
+            return None
+        else:
+            raise SystemExit(1)
+
     barcodes, counts = list(zip(*barcode_counts.most_common()))
 
     most_common_bc = barcodes[0]
@@ -228,10 +239,10 @@ def main(arguments=None):
         # Create a writer using the CSV module
         csv_counts_writer = csv.writer(args.csv_counts)
         # Write a header
-        csv_counts_writer.writerow(['barcode', 'diff_most_common','count'])
+        csv_counts_writer.writerow(['barcode', 'diff_most_common', 'count'])
         for bc, count in barcode_counts.most_common():
-            csv_counts_writer.writerow([bc, seqdiff(most_common_bc,bc), count])
-        
+            csv_counts_writer.writerow([bc, seqdiff(most_common_bc, bc), count])
+
     if args.show_counts:
         for bc, count in barcode_counts.most_common():
             print(('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count)))

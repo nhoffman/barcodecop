@@ -23,6 +23,7 @@ from barcodecop.barcodecop import main
 testfiles = 'testfiles'
 barcodes = path.join(testfiles, 'barcodes.fastq.gz')
 barcodes_qual = path.join(testfiles, 'barcodes_qual.fastq.gz')
+empty = path.join(testfiles, 'empty.fastq.gz')
 outdir = 'test_output'
 most_common = 'TATTACTCTA'
 dual1 = path.join(testfiles, 'dual_I1.fastq.gz')
@@ -112,6 +113,16 @@ class TestSingleIndex(TestCase):
                 SystemExit,
                 main,
                 [barcodes, '-f', barcodes, '--min-pct-assignment', '100', '--strict'])
+
+    def test_07(self):
+        # test error on empty file
+        with Capturing():
+            self.assertRaises(SystemExit, main, [empty, '-f', empty])
+
+    def test_08(self):
+        # no error on empty file with --allow-empty
+        with Capturing():
+            main([empty, '-f', empty, '--allow-empty'])
 
     def test_qual_01(self):
         # test quality filtering with defaults
