@@ -135,9 +135,6 @@ def main(arguments=None):
         'index', nargs='+', type=Opener(), metavar='file.fastq[.bz2|.gz]',
         help='one or two files containing index reads in fastq format')
     parser.add_argument(
-        '-f', '--fastq', type=Opener(), metavar='file.fastq[.bz2|.gz]',
-        help='reads to filter in fastq format')
-    parser.add_argument(
         '-o', '--outfile', default=sys.stdout, type=Opener('w'),
         help='output fastq')
     parser.add_argument(
@@ -150,14 +147,19 @@ def main(arguments=None):
         '--invert', action='store_true', default=False,
         help='include only sequences failing filtering criteria')
     parser.add_argument(
-        '--allow-empty', action='store_true', default=False,
-        help='exit without error if input contains no reads')
-    parser.add_argument(
         '-q', '--quiet', action='store_true', default=False,
         help='minimize messages to stderr')
     parser.add_argument(
         '-V', '--version', action=VersionAction, version=__version__,
         help='Print the version number and exit')
+
+    processing_options = parser.add_mutually_exclusive_group(required=True)
+    processing_options.add_argument(
+        '-c', '--show-counts', action='store_true', default=False,
+        help='tabulate barcode counts and exit')
+    processing_options.add_argument(
+        '-f', '--fastq', type=Opener(), metavar='file.fastq[.bz2|.gz]',
+        help='reads to filter in fastq format')
 
     match_options = parser.add_argument_group('Barcode matching options')
 
@@ -174,11 +176,11 @@ def main(arguments=None):
         '--strict', action='store_true', default=False,
         help=("""fail if conditions of --min-pct-assignment are not met"""))
     match_options.add_argument(
-        '-c', '--show-counts', action='store_true', default=False,
-        help='tabulate barcode counts and exit')
-    match_options.add_argument(
-        '-C', '--csv-counts', type=argparse.FileType('w'), metavar='FILE',
+        '-b', '--barcode-counts', type=argparse.FileType('w'), metavar='FILE',
         help='tabulate barcode counts and store as a CSV')
+    match_options.add_argument(
+        '-C', '--read-counts', type=argparse.FileType('w'), metavar='FILE',
+        help='tabulate read counts and store as a CSV')
 
     qual_options = parser.add_argument_group('Barcode quality filtering options')
 
@@ -217,31 +219,29 @@ def main(arguments=None):
     # use bc1 to determine most common barcode
     bc1, bc2 = tee(bcseqs, 2)
 
-    # determine the most common barcode
-    barcode_counts = Counter(
-        [str(seq.seq) for seq in islice(bc1, args.snifflimit)])
+    iseqs = [str(seq.seq) for seq in islice(bc1, args.snifflimit)]
 
-    if not barcode_counts.most_common():
-        log.error('no reads, exiting')
-        if args.allow_empty:
-            return None
-        else:
-            raise SystemExit(1)
+    # determine the most common barcode
+    if iseqs:
+        barcode_counts = Counter(iseqs)
+    else:
+        barcode_counts = Counter({None: 0})
 
     barcodes, counts = list(zip(*barcode_counts.most_common()))
 
     most_common_bc = barcodes[0]
-    most_common_pct = 100 * float(counts[0]) / sum(counts)
+    most_common_pct = 100 * float(counts[0]) / (sum(counts) or 1)
+
     log.info('most common barcode: {} ({}/{} = {:.2f}%)'.format(
         most_common_bc, counts[0], sum(counts), most_common_pct))
 
-    if args.csv_counts:
+    if args.barcode_counts:
         # Create a writer using the CSV module
-        csv_counts_writer = csv.writer(args.csv_counts)
+        barcode_counts_writer = csv.writer(args.barcode_counts)
         # Write a header
-        csv_counts_writer.writerow(['barcode', 'diff_most_common', 'count'])
+        barcode_counts_writer.writerow(['barcode', 'diff_most_common', 'count'])
         for bc, count in barcode_counts.most_common():
-            csv_counts_writer.writerow([bc, seqdiff(most_common_bc, bc), count])
+            barcode_counts_writer.writerow([bc, seqdiff(most_common_bc, bc), count])
 
     if args.show_counts:
         for bc, count in barcode_counts.most_common():
@@ -257,13 +257,11 @@ def main(arguments=None):
         else:
             log.warning('Warning: ' + msg)
 
-    if not args.fastq:
-        log.error('specify a fastq format file to filter using -f/--fastq')
-        sys.exit(1)
-
     ifilterfun = filterfalse if args.invert else filter
 
-    seqs = fastqlite(args.fastq)
+    # use seqs2 for --read-counts input-count
+    seqs, seqs2 = tee(fastqlite(args.fastq))
+
     filtered = zip_longest(seqs, bc2)
 
     if args.match_filter:
@@ -271,6 +269,13 @@ def main(arguments=None):
 
     if args.qual_filter:
         filtered = ifilterfun(qual_filter, filtered)
+
+    if args.read_counts:
+        filtered, filtered2 = tee(filtered)
+        input_count = len(list(seqs2))
+        output_count = len(list(filtered2))
+        read_counts_writer = csv.writer(args.read_counts)
+        read_counts_writer.writerow([args.outfile.name, input_count, output_count])
 
     for seq, bc in islice(filtered, args.head):
         assert seq.id == bc.id
