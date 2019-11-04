@@ -230,7 +230,10 @@ def main(arguments=None):
     barcodes, counts = list(zip(*barcode_counts.most_common()))
 
     most_common_bc = barcodes[0]
-    most_common_pct = 100 * float(counts[0]) / (sum(counts) or 1)
+    try:
+        most_common_pct = 100 * float(counts[0]) / sum(counts)
+    except ZeroDivisionError:
+        most_common_pct = 0
 
     log.info('most common barcode: {} ({}/{} = {:.2f}%)'.format(
         most_common_bc, counts[0], sum(counts), most_common_pct))
