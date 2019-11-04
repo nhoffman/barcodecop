@@ -272,8 +272,8 @@ def main(arguments=None):
 
     if args.read_counts:
         filtered, filtered2 = tee(filtered)
-        input_count = len(list(seqs2))
-        output_count = len(list(filtered2))
+        input_count = sum(1 for _ in seqs2)
+        output_count = sum(1 for _ in filtered2)
         read_counts_writer = csv.writer(args.read_counts)
         read_counts_writer.writerow([args.outfile.name, input_count, output_count])
 
