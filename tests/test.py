@@ -114,16 +114,6 @@ class TestSingleIndex(TestCase):
                 main,
                 [barcodes, '-f', barcodes, '--min-pct-assignment', '100', '--strict'])
 
-    def test_07(self):
-        # test error on empty file
-        with Capturing():
-            self.assertRaises(SystemExit, main, [empty, '-f', empty])
-
-    def test_08(self):
-        # no error on empty file with --allow-empty
-        with Capturing():
-            main([empty, '-f', empty, '--allow-empty'])
-
     def test_qual_01(self):
         # test quality filtering with defaults
         with Capturing() as output:
