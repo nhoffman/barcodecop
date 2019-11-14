@@ -243,6 +243,15 @@ def main(arguments=None):
         most_common_pct = 100 * float(counts[0]) / sum(counts)
     except ZeroDivisionError:
         most_common_pct = 0
+    else:
+        if most_common_pct < args.min_pct_assignment:
+            msg = 'frequency of most common barcode is less than {}%'.format(
+                args.min_pct_assignment)
+            if args.strict:
+                log.error('Error: ' + msg)
+                sys.exit(1)
+            else:
+                log.warning('Warning: ' + msg)
 
     log.info('most common barcode: {} ({}/{} = {:.2f}%)'.format(
         most_common_bc, counts[0], sum(counts), most_common_pct))
@@ -259,15 +268,6 @@ def main(arguments=None):
         for bc, count in barcode_counts.most_common():
             print(('{}\t{}\t{}'.format(bc, seqdiff(most_common_bc, bc), count)))
         return None
-
-    if most_common_pct < args.min_pct_assignment:
-        msg = 'frequency of most common barcode is less than {}%'.format(
-            args.min_pct_assignment)
-        if args.strict:
-            log.error('Error: ' + msg)
-            sys.exit(1)
-        else:
-            log.warning('Warning: ' + msg)
 
     ifilterfun = filterfalse if args.invert else filter
 
