@@ -194,7 +194,8 @@ def main(arguments=None):
 
     qual_options.add_argument(
         '--qual-filter', action='store_true', default=False,
-        help='filter reads based on minimum index quality [default: no quality filter]')
+        help=('filter reads based on minimum index quality '
+              '[default: no quality filter]'))
     qual_options.add_argument(
         '-p', '--min-qual', type=int, default=MIN_QUAL,
         help="""reject seqs with mean barcode quality score less than
@@ -209,7 +210,7 @@ def main(arguments=None):
 
     logging.basicConfig(
         format='%(message)s',
-        level=logging.ERROR if args.quiet else logging.INFO)
+        level=logging.ERROR if args.quiet else logging.WARNING)
     log = logging.getLogger(__name__)
 
     # when provided with dual barcodes, concatenate into a single
