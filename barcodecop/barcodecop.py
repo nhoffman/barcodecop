@@ -127,6 +127,14 @@ def combine_dual_indices(file1, file2):
         yield Seq(id=i1.id, seq=i1.seq + '+' + i2.seq, qual=i1.qual, qual2=i2.qual)
 
 
+def close_all_files(args):
+    for name, obj in args.__dict__.items():
+        if (obj and hasattr(obj, 'close') and
+            hasattr(obj, 'closed') and hasattr(obj, 'name')):
+            if not obj.closed:
+                obj.close()
+
+
 def main(arguments=None):
     parser = argparse.ArgumentParser(
         prog='barcodecop', description=__doc__,
@@ -283,6 +291,8 @@ def main(arguments=None):
     for seq, bc in islice(filtered, args.head):
         assert seq.id == bc.id
         args.outfile.write(as_fastq(seq))
+
+    close_all_files(args)
 
 
 if __name__ == '__main__':
