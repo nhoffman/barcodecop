@@ -5,6 +5,7 @@ import os
 from os import path
 import inspect
 from unittest import TestCase
+import csv
 
 # in python2.7, io.StringIO cannot accept str output
 try:
@@ -32,6 +33,7 @@ dual_qual1 = path.join(testfiles, 'dual_I1_qual.fastq.gz')
 dual_qual2 = path.join(testfiles, 'dual_I2_qual.fastq.gz')
 most_common_dual = 'ACTGGTAGGA+TTCTCTCCAG'
 
+TEST_OUTPUT = 'test-output'
 
 class Capturing(list):
 
@@ -50,10 +52,10 @@ class Capturing(list):
         sys.stdout = self._stdout
 
 
-def mkoutdir(basedir):
+def mkoutdir(cls, basedir=TEST_OUTPUT):
     stacknames = [x[3] for x in inspect.stack()]
     testfun = [name for name in stacknames if name.startswith('test_')][0]
-    pth = path.join(basedir, testfun)
+    pth = path.join(basedir, cls.__class__.__name__, testfun)
 
     try:
         os.makedirs(pth)
@@ -128,6 +130,36 @@ class TestSingleIndex(TestCase):
                 [barcodes_qual, '-f', barcodes_qual, '--qual-filter', '-p', '2'])
         desc, seqs, __, quals = list(zip(*grouper(output, 4)))
         self.assertEqual(len(seqs), 5)
+
+    def test_count(self):
+        outdir = mkoutdir(self)
+        read_counts = path.join(outdir, 'counts.csv')
+        main([barcodes, '-f', barcodes,
+              '--qual-filter',
+              '-o', path.join(outdir, 'filtered.fastq'),
+              '--read-counts', read_counts])
+
+        with open(read_counts) as f:
+            reader = csv.reader(f)
+            fname, input, output = next(reader)
+        self.assertEqual(input, '15000')
+        self.assertEqual(output, '14729')
+
+    def test_empty(self):
+        # test filtering of empty fastq
+        # with Capturing() as output:
+
+        outdir = mkoutdir(self)
+        read_counts = path.join(outdir, 'counts.csv')
+        main([empty, '-f', empty,
+              '-o', path.join(outdir, 'filtered.fastq'),
+              '--read-counts', read_counts])
+
+        with open(read_counts) as f:
+            reader = csv.reader(f)
+            fname, input, output = next(reader)
+        self.assertEqual(input, '0')
+        self.assertEqual(output, '0')
 
     # TODO: test non-default offset, but will need sequences with the
     # appropriate encoding
