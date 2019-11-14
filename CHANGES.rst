@@ -2,6 +2,13 @@
  Changelog for barcodcop
 =========================
 
+version 0.5
+===========
+
+* handles empty files without error (GH10)
+* add ``-C/--read-counts`` to provide input and output read counts
+* rename ``-c/--show-counts`` to ``-b/--barcode-counts``
+
 version 0.4.1
 =============
 
