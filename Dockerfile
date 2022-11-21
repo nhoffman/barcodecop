@@ -1,6 +1,5 @@
 FROM python:3.11-slim-buster
 
-RUN mkdir /src
 WORKDIR /src/
 COPY . .
 
