@@ -35,11 +35,9 @@ file. It also filters reads based on average barcode quality score.
 
 Command line arguments::
 
-  usage: barcodecop [-h] [-f file.fastq[.bz2|.gz]] [-o OUTFILE] [--snifflimit N]
-		    [--head N] [--invert] [-q] [-V] [--match-filter]
-		    [--min-pct-assignment PERCENT] [--strict] [-c]
-		    [--qual-filter] [-p MIN_QUAL] [--encoding {phred}]
-		    file.fastq[.bz2|.gz] [file.fastq[.bz2|.gz] ...]
+  usage: barcodecop [-h] [-o OUTFILE] [--snifflimit N] [--head N] [--invert] [-q] [-V] (-c | -f file.fastq[.bz2|.gz]) [--match-filter]
+                    [--min-pct-assignment PERCENT] [--strict] [-b FILE] [-C FILE] [--allow-empty] [--qual-filter] [-p MIN_QUAL] [--encoding {phred}]
+                    file.fastq[.bz2|.gz] [file.fastq[.bz2|.gz] ...]
 
   Filter fastq files by enforcing exact barcode match and quality score.
 
@@ -47,51 +45,38 @@ Command line arguments::
   suffix.
 
   positional arguments:
-    file.fastq[.bz2|.gz]  one or two files containing index reads in fastq
-			  format
+    file.fastq[.bz2|.gz]  one or two files containing index reads in fastq format
 
-  optional arguments:
+  options:
     -h, --help            show this help message and exit
-    -f file.fastq[.bz2|.gz], --fastq file.fastq[.bz2|.gz]
-			  reads to filter in fastq format
     -o OUTFILE, --outfile OUTFILE
-			  output fastq
-    --snifflimit N        read no more than N records from the index file
-			  [10000]
+                          output fastq
+    --snifflimit N        read no more than N records from the index file [10000]
     --head N              limit the output file to N records
     --invert              include only sequences failing filtering criteria
     -q, --quiet           minimize messages to stderr
     -V, --version         Print the version number and exit
+    -c, --show-counts     tabulate barcode counts and exit
+    -f file.fastq[.bz2|.gz], --fastq file.fastq[.bz2|.gz]
+                          reads to filter in fastq format
 
   Barcode matching options:
-    --match-filter        filter reads based on exact match to most common
-			  barcode [default: no match filter]
+    --match-filter        filter reads based on exact match to most common barcode [default: no match filter]
     --min-pct-assignment PERCENT
-			  warn (or fail with an error; see --strict) if the most
-			  common barcode represents less than PERCENT of the
-			  total [90.0]
+                          warn (or fail with an error; see --strict) if the most common barcode represents less than PERCENT of the total [90.0]
     --strict              fail if conditions of --min-pct-assignment are not met
-    -c, --show-counts     tabulate barcode counts and exit
+    -b FILE, --barcode-counts FILE
+                          tabulate barcode counts and store as a CSV
+    -C FILE, --read-counts FILE
+                          tabulate read counts and store as a CSV
+    --allow-empty         accept fastq files which contain zero length seqs/qual strings[default: do not allow empty seqs in fastq files]
 
   Barcode quality filtering options:
-    --qual-filter         filter reads based on minimum index quality [default:
-			  no quality filter]
+    --qual-filter         filter reads based on minimum index quality [default: no quality filter]
     -p MIN_QUAL, --min-qual MIN_QUAL
-			  reject seqs with mean barcode quality score less than
-			  this value; for dual index, both barcodes must meet
-			  the threshold [26]
-    --encoding {phred}    quality score encoding; see
-			  https://en.wikipedia.org/wiki/FASTQ_format [phred]
+                          reject seqs with mean barcode quality score less than this value; for dual index, both barcodes must meet the threshold [26]
+    --encoding {phred}    quality score encoding; see https://en.wikipedia.org/wiki/FASTQ_format [phred]
 
-
-Both single and dual-indexing are supported. For example::
-
-  barcodecop input_I1.fastq --fastq input_R1.fastq -o output_R1.fastq --match-filter
-
-Or, using a dual index::
-
-  barcodecop input_I1.fastq input_I2.fastq --fastq input_R1.fastq \
-      -o output_R1.fastq --match-filter
 
 Installation
 ============
