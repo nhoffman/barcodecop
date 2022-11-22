@@ -20,6 +20,7 @@ setup(
     author_email='noah.hoffman@gmail.com',
     description=('Enforce barcode match stringency and read '
                  'quality in demultiplexed MiSeq reads'),
+    long_description=long_description,
     long_description_content_type='text/x-rst',
     url='https://github.com/nhoffman/barcodecop',
     name='barcodecop',
