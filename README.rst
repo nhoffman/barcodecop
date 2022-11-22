@@ -4,8 +4,8 @@
 
 Enforce barcode match stringency and read quality in demultiplexed MiSeq reads.
 
-.. image:: https://travis-ci.org/nhoffman/barcodecop.svg?branch=master
-    :target: https://travis-ci.org/nhoffman/barcodecop
+.. image:: https://github.com/nhoffman/barcodecop/actions/workflows/test.yml/badge.svg
+    :target: https://github.com/nhoffman/barcodecop/actions/workflows/test.yml
 
 Barcode mis-assignment represents a significant problem for ultra
 sensitive assays that strongly interpret the presence of very low
