@@ -189,6 +189,10 @@ def main(arguments=None):
     match_options.add_argument(
         '-C', '--read-counts', type=argparse.FileType('w'), metavar='FILE',
         help='tabulate read counts and store as a CSV')
+    match_options.add_argument(
+        '--allow-empty', action='store_true', default=False,
+        help=('accept fastq files which contain zero length seqs/qual strings'
+              '[default: do not allow empty seqs in fastq files]'))
 
     qual_options = parser.add_argument_group('Barcode quality filtering options')
 
@@ -272,7 +276,7 @@ def main(arguments=None):
     ifilterfun = filterfalse if args.invert else filter
 
     # use seqs2 for --read-counts input-count
-    seqs, seqs2 = tee(fastqlite(args.fastq))
+    seqs, seqs2 = tee(fastqlite(args.fastq, args.allow_empty))
 
     filtered = zip_longest(seqs, bc2)
 
