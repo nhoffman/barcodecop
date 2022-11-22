@@ -93,7 +93,6 @@ Or, using a dual index::
   barcodecop input_I1.fastq input_I2.fastq --fastq input_R1.fastq \
       -o output_R1.fastq --match-filter
 
-
 Installation
 ============
 
@@ -104,7 +103,6 @@ Install from PyPi using pip::
 Or install directly from the git repository::
 
   pip install git+https://github.com/nhoffman/barcodecop.git
-
 
 Testing
 =======
