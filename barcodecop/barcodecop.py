@@ -289,9 +289,16 @@ def main(arguments=None):
     if args.read_counts:
         filtered, filtered2 = tee(filtered)
         input_count = sum(1 for _ in seqs2)
-        output_count = sum(1 for _ in filtered2)
+        filtered_count = sum(1 for _ in filtered2)
+        if args.head is not None:
+            output_count = min(filtered_count, args.head)
+        else:
+            output_count = filtered_count
         read_counts_writer = csv.writer(args.read_counts)
-        read_counts_writer.writerow([args.outfile.name, input_count, output_count])
+        read_counts_writer.writerow(
+            ['outfile', 'in', 'filtered', 'out'])
+        read_counts_writer.writerow(
+            [args.outfile.name, input_count, filtered_count, output_count])
 
     for seq, bc in islice(filtered, args.head):
         assert seq.id == bc.id
