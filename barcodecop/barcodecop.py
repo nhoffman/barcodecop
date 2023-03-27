@@ -278,12 +278,13 @@ def main(arguments=None):
 
     ifilterfun = filterfalse if args.invert else filter
 
-    # use seqs2 for --read-counts input-count
-    if args.fastq and args.counts:
+    if args.fastq and args.read_counts:
+        # use seqs2 for --read-counts input-count
         seqs, seqs2 = tee(fastqlite(args.fastq, args.allow_empty))
     elif args.fastq:
         seqs = fastqlite(args.fastq, args.allow_empty)
     else:
+        # just args.names
         seqs = []
 
     filtered = zip_longest(seqs, bc2)
