@@ -170,7 +170,7 @@ def main(arguments=None):
         help='reads to filter in fastq format')
     processing_options.add_argument(
         '-n', '--names', type=Opener('w'), metavar='file.txt[.bz2|.gz]',
-        help='output index names that pass filtering')
+        help='output read names that pass filtering')
 
     match_options = parser.add_argument_group('Barcode matching options')
 
