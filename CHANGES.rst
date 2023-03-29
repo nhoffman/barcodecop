@@ -2,6 +2,11 @@
  Changelog for barcodcop
 =========================
 
+version 0.5.2-dev
+=================
+
+* `--names` file.txt[.bz2|.gz] option to output seq names that pass filtering
+
 version 0.5.1
 =============
 
