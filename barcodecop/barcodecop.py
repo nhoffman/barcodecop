@@ -143,8 +143,8 @@ def main(arguments=None):
         'index', nargs='+', type=Opener(), metavar='file.fastq[.bz2|.gz]',
         help='one or two files containing index reads in fastq format')
     parser.add_argument(
-        '-o', '--outfile', default=sys.stdout, type=Opener('w'),
-        help='output fastq')
+        '-o', '--outfile', default=sys.stdout, metavar='file.fastq[.bz2|.gz]',
+        type=Opener('w'), help='output fastq')
     parser.add_argument(
         '--snifflimit', type=int, default=10000, metavar='N',
         help='read no more than N records from the index file [%(default)s]')
@@ -168,6 +168,9 @@ def main(arguments=None):
     processing_options.add_argument(
         '-f', '--fastq', type=Opener(), metavar='file.fastq[.bz2|.gz]',
         help='reads to filter in fastq format')
+    processing_options.add_argument(
+        '-n', '--names', type=Opener('w'), metavar='file.txt[.bz2|.gz]',
+        help='output read names that pass filtering')
 
     match_options = parser.add_argument_group('Barcode matching options')
 
@@ -275,8 +278,14 @@ def main(arguments=None):
 
     ifilterfun = filterfalse if args.invert else filter
 
-    # use seqs2 for --read-counts input-count
-    seqs, seqs2 = tee(fastqlite(args.fastq, args.allow_empty))
+    if args.fastq and args.read_counts:
+        # use seqs2 for --read-counts input-count
+        seqs, seqs2 = tee(fastqlite(args.fastq, args.allow_empty))
+    elif args.fastq:
+        seqs = fastqlite(args.fastq, args.allow_empty)
+    else:
+        # just args.names
+        seqs = []
 
     filtered = zip_longest(seqs, bc2)
 
@@ -293,9 +302,14 @@ def main(arguments=None):
         read_counts_writer = csv.writer(args.read_counts)
         read_counts_writer.writerow([args.outfile.name, input_count, output_count])
 
-    for seq, bc in islice(filtered, args.head):
-        assert seq.id == bc.id
-        args.outfile.write(as_fastq(seq))
+    if args.fastq:
+        for seq, bc in islice(filtered, args.head):
+            assert seq.id == bc.id
+            args.outfile.write(as_fastq(seq))
+
+    if args.names:
+        names = (bc.id for _, bc in filtered)
+        args.names.write('\n'.join(names) + '\n')
 
     close_all_files(args)
 
