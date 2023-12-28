@@ -141,7 +141,8 @@ class TestSingleIndex(TestCase):
 
         with open(read_counts) as f:
             reader = csv.reader(f)
-            fname, input, output = next(reader)
+            next(reader)  # header
+            fname, input, filtered, output = next(reader)
         self.assertEqual(input, '15000')
         self.assertEqual(output, '14729')
 
@@ -157,7 +158,8 @@ class TestSingleIndex(TestCase):
 
         with open(read_counts) as f:
             reader = csv.reader(f)
-            fname, input, output = next(reader)
+            next(reader)  # header
+            fname, input, filtered, output = next(reader)
         self.assertEqual(input, '0')
         self.assertEqual(output, '0')
 
